@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality and security
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API_PORT: '3001'
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: postgresql://bichocoin_ci:bichocoin_ci_password@localhost:5432/bichocoin_ci?schema=public
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
+      POSTGRES_DB: bichocoin_ci
+      POSTGRES_PASSWORD: bichocoin_ci_password
+      POSTGRES_PORT: '5432'
+      POSTGRES_USER: bichocoin_ci
+    services:
+      postgres:
+        image: postgres:18.4-alpine3.24
+        env:
+          POSTGRES_DB: bichocoin_ci
+          POSTGRES_PASSWORD: bichocoin_ci_password
+          POSTGRES_USER: bichocoin_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bichocoin_ci -d bichocoin_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Generate Prisma Client
+        run: npm run prisma:generate
+
+      - name: Validate Prisma schema
+        run: npm run prisma:validate
+
+      - name: Test
+        run: npm run test
+        env:
+          NODE_ENV: test
+
+      - name: Test PostgreSQL integration
+        run: npm run test:database --workspace=apps/api
+        env:
+          NODE_ENV: test
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Validate Docker Compose configuration
+        run: docker compose --env-file .env.example config --quiet
+
+      - name: Audit complete dependency tree
+        run: npm run audit:all
+
+      - name: Audit production dependency tree
+        run: npm run audit:prod

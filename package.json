@@ -1,0 +1,37 @@
+{
+  "name": "bichocoin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "BichoCoin football gaming platform monorepo",
+  "license": "UNLICENSED",
+  "packageManager": "npm@11.17.0",
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "npm": ">=11.17.0 <12"
+  },
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names web,api --prefix-colors cyan,magenta \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "node --env-file-if-exists=.env apps/web/scripts/start-dev.mjs",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspaces",
+    "build": "npm run build --workspaces",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "audit": "npm run audit:all && npm run audit:prod",
+    "audit:all": "npm audit --include=dev --audit-level=high",
+    "audit:prod": "npm audit --omit=dev --audit-level=moderate",
+    "prisma:generate": "npm exec --workspace=apps/api -- prisma generate",
+    "prisma:validate": "npm exec --workspace=apps/api -- prisma validate"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.4",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3"
+  }
+}
