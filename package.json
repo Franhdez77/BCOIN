@@ -13,6 +13,11 @@
     "apps/web",
     "apps/api"
   ],
+  "overrides": {
+    "@nestjs/swagger": {
+      "js-yaml": "5.2.3"
+    }
+  },
   "scripts": {
     "dev": "concurrently --kill-others-on-fail --names web,api --prefix-colors cyan,magenta \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "node --env-file-if-exists=.env apps/web/scripts/start-dev.mjs",

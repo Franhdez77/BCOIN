@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest';
 import Home from './page';
 
 describe('Home', () => {
-  it('renders the technical foundation placeholder', () => {
+  it('renders links to the public authentication routes', () => {
     render(<Home />);
 
     expect(screen.getByRole('heading', { name: 'BichoCoin' })).toBeInTheDocument();
-    expect(screen.getByText('The web foundation is running.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open API live health' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute(
       'href',
-      'http://localhost:3001/health/live',
+      '/register',
     );
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
   });
 });

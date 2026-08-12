@@ -17,25 +17,61 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      ACCESS_TOKEN_TTL_SECONDS: '600'
       API_PORT: '3001'
+      AUTH_ACCESS_COOKIE_NAME: bichocoin_access
+      AUTH_CSRF_COOKIE_NAME: bichocoin_csrf
+      AUTH_EMAIL_VERIFICATION_RATE_LIMIT_MAX: '5'
+      AUTH_EMAIL_VERIFICATION_RATE_LIMIT_WINDOW_SECONDS: '3600'
+      AUTH_LOGIN_RATE_LIMIT_MAX: '10'
+      AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS: '600'
+      AUTH_PASSWORD_RECOVERY_RATE_LIMIT_MAX: '5'
+      AUTH_PASSWORD_RECOVERY_RATE_LIMIT_WINDOW_SECONDS: '3600'
+      AUTH_PASSWORD_RESET_RATE_LIMIT_MAX: '5'
+      AUTH_PASSWORD_RESET_RATE_LIMIT_WINDOW_SECONDS: '900'
+      AUTH_REFRESH_COOKIE_NAME: bichocoin_refresh
+      AUTH_REFRESH_RATE_LIMIT_MAX: '30'
+      AUTH_REFRESH_RATE_LIMIT_WINDOW_SECONDS: '60'
+      AUTH_REGISTER_RATE_LIMIT_MAX: '5'
+      AUTH_REGISTER_RATE_LIMIT_WINDOW_SECONDS: '3600'
+      COOKIE_SECURE: 'false'
       CORS_ALLOWED_ORIGINS: http://localhost:3000
+      CSRF_HMAC_SECRET: ci-only-csrf-hmac-secret-00000000000000000000000000000000
+      # Compile-time URL is deliberately distinct from the destructive integration-test target.
       DATABASE_URL: postgresql://bichocoin_ci:bichocoin_ci_password@localhost:5432/bichocoin_ci?schema=public
+      AUTH_TEST_DATABASE_URL: postgresql://bichocoin_ci:bichocoin_ci_password@localhost:5432/bichocoin_auth_test?schema=public
+      EMAIL_VERIFICATION_TTL_SECONDS: '86400'
+      JWT_AUDIENCE: bichocoin-web
+      JWT_ISSUER: bichocoin-api
+      JWT_SIGNING_SECRET: ci-only-jwt-signing-secret-0000000000000000000000000000000
       NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
-      POSTGRES_DB: bichocoin_ci
+      OPENAPI_ENABLED: 'false'
+      PASSWORD_RESET_TTL_SECONDS: '3600'
+      POSTGRES_DB: bichocoin_auth_test
       POSTGRES_PASSWORD: bichocoin_ci_password
       POSTGRES_PORT: '5432'
       POSTGRES_USER: bichocoin_ci
+      RATE_LIMIT_HMAC_SECRET: ci-only-rate-limit-secret-00000000000000000000000000000000
+      REFRESH_TOKEN_TTL_SECONDS: '2592000'
+      SMTP_FROM: noreply@bichocoin.test
+      SMTP_HOST: localhost
+      SMTP_PASSWORD: ''
+      SMTP_PORT: '1025'
+      SMTP_SECURE: 'false'
+      SMTP_REQUIRE_TLS: 'false'
+      SMTP_USER: ''
+      WEB_APP_BASE_URL: http://localhost:3000
     services:
       postgres:
         image: postgres:18.4-alpine3.24
         env:
-          POSTGRES_DB: bichocoin_ci
+          POSTGRES_DB: bichocoin_auth_test
           POSTGRES_PASSWORD: bichocoin_ci_password
           POSTGRES_USER: bichocoin_ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U bichocoin_ci -d bichocoin_ci"
+          --health-cmd "pg_isready -U bichocoin_ci -d bichocoin_auth_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -74,15 +110,26 @@ jobs:
         env:
           NODE_ENV: test
 
+      - name: Apply database migrations
+        run: npm exec --workspace=apps/api -- prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.AUTH_TEST_DATABASE_URL }}
+
       - name: Test PostgreSQL integration
         run: npm run test:database --workspace=apps/api
         env:
           NODE_ENV: test
+          RUN_DATABASE_TESTS: 'true'
 
       - name: Build
         run: npm run build
         env:
+          COOKIE_SECURE: 'true'
+          CORS_ALLOWED_ORIGINS: https://app.example.invalid
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.invalid
           NODE_ENV: production
+          SMTP_REQUIRE_TLS: 'true'
+          WEB_APP_BASE_URL: https://app.example.invalid
 
       - name: Validate Docker Compose configuration
         run: docker compose --env-file .env.example config --quiet

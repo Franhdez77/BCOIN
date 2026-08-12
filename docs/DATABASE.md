@@ -28,6 +28,41 @@ npm run prisma:validate
 There is no migration to review for Sprint 0. The first schema migration belongs to the sprint
 that introduces its owning domain model.
 
+## Sprint 1 authentication schema
+
+The reviewed authentication migration is `20260811120000_sprint_1_authentication`. Deployment and
+CI apply committed migrations with:
+
+```text
+npm exec --workspace=apps/api -- prisma migrate deploy
+```
+
+It introduces these auth-owned models:
+
+- `User`: preserves entered email/username while enforcing unique normalized email and username;
+  stores only `passwordHash`, role (`USER`/`ADMIN`), account status
+  (`ACTIVE`/`SUSPENDED`/`BANNED`), verification, password-change, and audit timestamps.
+- `AuthSession`: one revocable refresh family with expiry, revocation reason, last-use time, and
+  bounded user-agent/IP-derived metadata needed for session management.
+- `RefreshToken`: a rotation chain whose random secret is hash-only; parent linkage is unique so a
+  token cannot be advanced twice without reuse detection.
+- `EmailVerificationToken` and `PasswordResetToken`: hash-only, expiring, single-use records with
+  consumed/revoked state. Partial unique constraints permit at most one active token of each
+  purpose per user.
+- `SecurityEvent`: security-event type plus optional user/session/request references, an
+  HMAC-derived subject hash, and bounded safe JSON metadata. It must not contain credentials,
+  token material, password hashes, raw request bodies, or unrestricted personal data.
+
+Indexes follow the implemented access paths: normalized identities, user/session active lookups,
+token expiry and creation order, and security-event user/type/time queries. Token and session
+state transitions that enforce rotation, consumption, or revocation must be transactional so two
+requests cannot both consume the same credential.
+
+Sprint 1 intentionally does not add `Wallet` or `CoinTransaction`. Although product acceptance
+expects a wallet after registration, creating an unledgered placeholder would violate the
+economic invariants. Sprint 2 owns the wallet/ledger migration, backfill for existing users, and
+atomic wallet creation for future registrations.
+
 ## Target entities
 
 ### User

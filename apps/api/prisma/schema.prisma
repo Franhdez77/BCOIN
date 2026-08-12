@@ -1,9 +1,163 @@
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "cjs"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum SessionRevocationReason {
+  LOGOUT
+  LOGOUT_ALL
+  USER_REVOKED
+  PASSWORD_RESET
+  REFRESH_REUSE
+  ACCOUNT_DISABLED
+  EXPIRED
+}
+
+enum SecurityEventType {
+  REGISTRATION_CREATED
+  EMAIL_VERIFICATION_REQUESTED
+  EMAIL_VERIFIED
+  LOGIN_SUCCEEDED
+  LOGIN_FAILED
+  REFRESH_ROTATED
+  REFRESH_REUSE_DETECTED
+  LOGOUT
+  LOGOUT_ALL
+  SESSION_REVOKED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  CSRF_REJECTED
+  RATE_LIMITED
+}
+
+model User {
+  id                String    @id @default(uuid()) @db.Uuid
+  email             String    @db.VarChar(254)
+  emailNormalized   String    @unique(map: "users_email_normalized_key") @db.VarChar(254)
+  username          String    @db.VarChar(32)
+  usernameNormalized String   @unique(map: "users_username_normalized_key") @db.VarChar(32)
+  passwordHash      String    @db.VarChar(255)
+  role              UserRole  @default(USER)
+  status            UserStatus @default(ACTIVE)
+  emailVerifiedAt   DateTime? @db.Timestamptz(3)
+  passwordChangedAt DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+
+  sessions               AuthSession[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  securityEvents          SecurityEvent[]
+
+  @@map("users")
+}
+
+model AuthSession {
+  id               String                   @id @default(uuid()) @db.Uuid
+  userId           String                   @db.Uuid
+  expiresAt        DateTime                 @db.Timestamptz(3)
+  lastUsedAt       DateTime                 @default(now()) @db.Timestamptz(3)
+  userAgent        String?                  @db.VarChar(512)
+  ipCreated        String?                  @db.VarChar(45)
+  ipLastSeen       String?                  @db.VarChar(45)
+  revokedAt        DateTime?                @db.Timestamptz(3)
+  revocationReason SessionRevocationReason?
+  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                 @updatedAt @db.Timestamptz(3)
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  refreshTokens RefreshToken[]
+  securityEvents SecurityEvent[]
+
+  @@index([userId, revokedAt, expiresAt], map: "auth_sessions_user_active_idx")
+  @@index([userId, createdAt], map: "auth_sessions_user_created_idx")
+  @@index([expiresAt], map: "auth_sessions_expires_at_idx")
+  @@map("auth_sessions")
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  sessionId     String    @db.Uuid
+  tokenHash     Bytes     @unique(map: "refresh_tokens_token_hash_key")
+  parentTokenId String?   @unique(map: "refresh_tokens_parent_token_id_key") @db.Uuid
+  expiresAt     DateTime  @db.Timestamptz(3)
+  consumedAt    DateTime? @db.Timestamptz(3)
+  revokedAt     DateTime? @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  session  AuthSession   @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  parent   RefreshToken? @relation("RefreshTokenChain", fields: [parentTokenId], references: [id], onDelete: Restrict)
+  children RefreshToken[] @relation("RefreshTokenChain")
+
+  @@index([sessionId, createdAt], map: "refresh_tokens_session_created_idx")
+  @@index([expiresAt], map: "refresh_tokens_expires_at_idx")
+  @@map("refresh_tokens")
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  Bytes     @unique(map: "email_verification_tokens_hash_key")
+  expiresAt  DateTime  @db.Timestamptz(3)
+  consumedAt DateTime? @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId], map: "email_verification_tokens_one_active_key", where: { consumedAt: null, revokedAt: null })
+  @@index([expiresAt], map: "email_verification_tokens_expires_at_idx")
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  Bytes     @unique(map: "password_reset_tokens_hash_key")
+  expiresAt  DateTime  @db.Timestamptz(3)
+  consumedAt DateTime? @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId], map: "password_reset_tokens_one_active_key", where: { consumedAt: null, revokedAt: null })
+  @@index([expiresAt], map: "password_reset_tokens_expires_at_idx")
+  @@map("password_reset_tokens")
+}
+
+model SecurityEvent {
+  id            String            @id @default(uuid()) @db.Uuid
+  type          SecurityEventType
+  userId        String?           @db.Uuid
+  sessionId     String?           @db.Uuid
+  requestId     String?           @db.Uuid
+  subjectHash   String?           @db.VarChar(64)
+  metadata      Json?
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+
+  user    User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session AuthSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt], map: "security_events_user_created_idx")
+  @@index([type, createdAt], map: "security_events_type_created_idx")
+  @@index([requestId], map: "security_events_request_id_idx")
+  @@map("security_events")
 }

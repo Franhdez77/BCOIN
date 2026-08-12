@@ -6,9 +6,23 @@ Repository, web/API bootstrap, PostgreSQL, Prisma, environments, validation foun
 Exit gate: clean checkout can install, start local stack, lint, typecheck, test, and build.
 
 ## Sprint 1 — Authentication
-Registration, login, refresh/session rotation, logout, logout-all, password reset, RBAC foundation, auth rate limits.
+Registration and email verification, login, cookie access JWT, opaque refresh rotation/reuse
+detection, current/all-session logout, session listing/revocation, password recovery, RBAC
+foundation, targeted rate limits, SMTP abstraction, security events, and non-production OpenAPI.
 
-Security gate: no account enumeration leaks; session revocation and authorization tests pass.
+Security gate: Argon2id uses the documented parameters; credentials are cookie-only; unsafe routes
+enforce nonce-bound HMAC CSRF plus exact Origin/Fetch Metadata checks; recovery is hash-only,
+single-use, expiring, and non-enumerating; rotation/reuse and revocation are covered by focused
+tests. The in-memory limiter permits one API replica only.
+
+Product acceptance calls for creating a wallet during registration, but that behavior is
+explicitly deferred. Sprint 1 must not create a mutable/unledgered placeholder balance. Sprint 2
+adds the wallet and immutable ledger together, backfills Sprint 1 users, then makes future account
+and wallet provisioning atomic.
+
+The Next.js UI uses a per-request nonce CSP and dynamic rendering; production permits no
+`'unsafe-inline'` or `'unsafe-eval'` script/style execution. Any future static rendering/CDN work
+must preserve equivalent nonce, hash, or tested SRI coverage.
 
 ## Sprint 2 — User + Wallet Ledger
 Profile, one wallet per user, immutable ledger service, transaction history, admin-safe adjustment foundation (not necessarily exposed yet).

@@ -33,14 +33,15 @@ These controls do not provide authentication, authorization, abuse throttling, C
 or economic/game integrity. Those controls must be added with the endpoint and session designs in
 their owning sprints; Sprint 0 does not create placeholder JWT, Argon2, MFA, or RBAC code.
 
-### Known CSP debt
+### Content Security Policy
 
-The Sprint 0 Next.js policy currently permits `'unsafe-inline'` for styles and scripts. This
-weakens CSP as an XSS mitigation, but removing it now would require a nonce/hash integration that
-is disproportionate to the static foundation and could break framework-generated inline content.
-Treat this as explicit security debt: reassess the rendered application and migrate to nonces or
-hashes before sensitive authenticated UI or a public production release. Do not interpret the
-current baseline policy as the final production CSP.
+Sprint 1 closes the foundation's inline-script debt with a cryptographically random nonce on each
+rendered document. The Next.js proxy supplies the same nonce-bound CSP to the request renderer and
+the browser response, and the root layout is dynamic so a nonce is never reused from static HTML.
+Production permits neither `'unsafe-inline'` nor `'unsafe-eval'` for scripts or styles. Development
+retains only the framework allowances needed for source evaluation and style injection. This
+dynamic-rendering policy trades static HTML/CDN caching for a materially stronger boundary around
+the authenticated UI; revisit that trade-off only with equivalent hash/SRI coverage and tests.
 
 ## Threat priorities for BichoCoin
 
@@ -67,16 +68,92 @@ current baseline policy as the final production CSP.
 - Revoke/reset active sessions after sensitive credential changes according to policy.
 - MFA is required for privileged/admin accounts before production prize administration.
 
+### Sprint 1 password and token parameters
+
+- Hash passwords with Argon2id version `0x13`, `memoryCost=19456` KiB, `timeCost=2`,
+  `parallelism=1`, a cryptographically random 16-byte salt, and a 32-byte hash.
+- Calibrate upward on production hardware without weakening those defaults. Use `needsRehash` on
+  successful login so future policy upgrades are gradual.
+- Run a dummy Argon2 verification for unknown accounts, keep hashing behind targeted rate limits,
+  and never log plaintext passwords, reset/verification secrets, refresh secrets, or hashes.
+- Access JWTs expire after 600 seconds and validate the configured issuer and audience. They are
+  transport credentials only, not a source for mutable role/account state beyond the documented
+  claims policy.
+- Opaque refresh credentials expire after 2,592,000 seconds. Persist only their hashes; rotate on
+  every use and revoke the complete session family when reuse is detected.
+- Email-verification credentials expire after 86,400 seconds and password-reset credentials after
+  3,600 seconds. They are random, hash-only at rest, single-use, and invalid after consumption,
+  revocation, or expiry.
+- A successful password reset revokes every existing session and refresh credential for the
+  account.
+
 ## Session transport
 
-Prefer secure HttpOnly cookies for browser refresh/session secrets where architecture permits:
+Sprint 1 uses cookies exclusively for browser credentials. The access JWT and opaque refresh
+secret are never returned in JSON and must never enter localStorage or sessionStorage. All three
+auth cookies are HttpOnly, host-only, `SameSite=Strict`, and `Secure` in production. Access and
+CSRF cookies use `Path=/api/v1`; the refresh cookie uses `Path=/api/v1/auth`.
 
-- `Secure` in production
-- `HttpOnly`
-- appropriate `SameSite`
-- scoped path/domain
+The CSRF cookie contains a random nonce, not a bearer token readable by JavaScript. A client first
+calls `GET /api/v1/auth/csrf`, then sends the returned HMAC value in `X-CSRF-Token` on every unsafe
+request, including registration, login, email verification/resend, refresh, logout, session
+deletion, forgot-password, and reset-password. Login and refresh rotate the nonce and may return a
+replacement CSRF token. The server also requires the exact allowed Origin and rejects incompatible
+Fetch Metadata. CORS is not treated as CSRF protection.
 
-If cookie-based authenticated state-changing requests are used, explicitly evaluate and implement CSRF protection rather than assuming CORS is CSRF protection.
+This strict policy depends on same-site HTTPS deployment of web and API. Do not set a parent
+`Domain` attribute, admit wildcard origins, or host untrusted sibling applications on the same
+site.
+
+### Targeted authentication limits
+
+The checked-in defaults are login 10 per 600 seconds, registration 5 per 3,600 seconds, refresh
+30 per 60 seconds, forgot-password 5 per 3,600 seconds, reset-password 5 per 900 seconds, and
+email verification/resend 5 per 3,600 seconds. Responses remain non-enumerating. Sprint 1 stores
+counters in memory and therefore supports one API replica only; restart clears counters and
+multiple replicas would permit limit bypass. Replace this with a shared store before scaling out.
+The current process also treats the direct socket peer as the client IP. Before placing the API
+behind a load balancer, configure and test an explicit trusted-proxy/CIDR policy; trusting arbitrary
+forwarded headers would permit limiter bypass, while trusting none would collapse all clients into
+the proxy address.
+
+### Recovery and email
+
+Email is sent through an SMTP abstraction. Raw verification/reset credentials exist only in the
+outgoing link; the database stores a hash. Links derive from the validated `WEB_APP_BASE_URL` and
+target the frontend routes `/verify-email` and `/reset-password`. Forgot-password/resend responses
+do not reveal whether an account exists. Mailpit is a loopback development capture service, never
+a production trust boundary.
+
+Production requires encrypted SMTP transport: either implicit TLS (`SMTP_SECURE=true`) or
+mandatory STARTTLS (`SMTP_REQUIRE_TLS=true`). Verification and reset links must never use an
+opportunistic plaintext fallback.
+
+Sprint 1 sends synchronously through the email port. Public recovery/resend responses stay generic
+even when delivery fails, and logs contain only a safe error type, but processing-time differences
+can remain. Before public high-volume release, move delivery to a durable transactional outbox and
+worker so availability, retries, and timing do not depend on the SMTP round trip.
+
+### Integration-test isolation
+
+Authentication database tests are destructive only inside their dedicated target. Enabling them
+requires an `AUTH_TEST_DATABASE_URL` that differs from `DATABASE_URL`, uses loopback PostgreSQL,
+and names a database ending in `_test`; the suite verifies the active database before cleanup and
+fails closed otherwise.
+
+### Retention and deployment debt
+
+Sprint 1 does not yet run a retention worker. Before a public production launch, define UTC
+retention windows and privacy rules for IP/User-Agent metadata and security events, then add
+indexed, bounded-batch cleanup for expired or revoked sessions and consumed, revoked, or expired
+refresh/action tokens. Session responses are capped, but the persistent tables otherwise grow
+until that policy exists.
+
+Local PostgreSQL is reached only through loopback. A remote production database must require an
+authenticated encrypted connection according to its provider (prefer certificate verification,
+not merely opportunistic encryption), use a least-privilege role, and remain non-public. The
+generic connection-URL validator does not prove the provider's CA or network policy, so deployment
+must treat database TLS verification as a release gate.
 
 ## Authorization
 

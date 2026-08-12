@@ -1,6 +1,9 @@
 import { RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 
 import { GlobalExceptionFilter } from '../common/errors/global-exception.filter';
@@ -9,8 +12,6 @@ import { httpLoggingMiddleware } from '../common/logging/http-logging.middleware
 import { requestIdMiddleware } from '../common/request-context/request-id.middleware';
 import { createGlobalValidationPipe } from '../common/validation/global-validation.pipe';
 import { type EnvironmentVariables, REQUEST_BODY_LIMIT_BYTES } from '../config/environment';
-
-const URL_ENCODED_PARAMETER_LIMIT = 100;
 
 export function configureApplication(app: NestExpressApplication): void {
   const config = app.get(ConfigService<EnvironmentVariables, true>);
@@ -30,9 +31,14 @@ export function configureApplication(app: NestExpressApplication): void {
     ),
   );
   app.use(httpLoggingMiddleware);
+  app.use(cookieParser());
+  app.use('/api/v1/auth', (_request: Request, response: Response, next: NextFunction) => {
+    response.setHeader('Cache-Control', 'no-store');
+    next();
+  });
 
   app.enableCors({
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
     credentials: true,
     exposedHeaders: ['X-Request-ID'],
     maxAge: 600,
@@ -42,11 +48,6 @@ export function configureApplication(app: NestExpressApplication): void {
 
   app.useBodyParser('json', {
     limit: REQUEST_BODY_LIMIT_BYTES,
-  });
-  app.useBodyParser('urlencoded', {
-    extended: false,
-    limit: REQUEST_BODY_LIMIT_BYTES,
-    parameterLimit: URL_ENCODED_PARAMETER_LIMIT,
   });
 
   app.setGlobalPrefix('api/v1', {
@@ -60,4 +61,37 @@ export function configureApplication(app: NestExpressApplication): void {
   app.useGlobalPipes(createGlobalValidationPipe());
   app.useGlobalInterceptors(app.get(ResponseEnvelopeInterceptor));
   app.useGlobalFilters(app.get(GlobalExceptionFilter));
+
+  if (
+    nodeEnvironment !== 'production' &&
+    config.getOrThrow('OPENAPI_ENABLED', { infer: true })
+  ) {
+    const document = SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder()
+        .setTitle('BichoCoin API')
+        .setDescription('BichoCoin authenticated application API')
+        .setVersion('1.0')
+        .addCookieAuth(
+          config.getOrThrow('AUTH_ACCESS_COOKIE_NAME', { infer: true }),
+          { type: 'apiKey', in: 'cookie' },
+          'accessCookie',
+        )
+        .addCookieAuth(
+          config.getOrThrow('AUTH_REFRESH_COOKIE_NAME', { infer: true }),
+          { type: 'apiKey', in: 'cookie' },
+          'refreshCookie',
+        )
+        .addCookieAuth(
+          config.getOrThrow('AUTH_CSRF_COOKIE_NAME', { infer: true }),
+          { type: 'apiKey', in: 'cookie' },
+          'csrfNonceCookie',
+        )
+        .build(),
+    );
+    SwaggerModule.setup('api/docs', app, document, {
+      jsonDocumentUrl: 'api/docs-json',
+      swaggerOptions: { persistAuthorization: false, supportedSubmitMethods: [] },
+    });
+  }
 }

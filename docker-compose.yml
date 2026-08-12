@@ -20,5 +20,13 @@ services:
       start_period: 10s
     stop_grace_period: 10s
 
+  mailpit:
+    image: axllent/mailpit:v1.30.5
+    profiles: ['email']
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${SMTP_PORT:-1025}:1025'
+      - '127.0.0.1:8025:8025'
+
 volumes:
   postgres_data:

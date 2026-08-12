@@ -63,6 +63,40 @@ PostgreSQL is the only local infrastructure service. Prisma has an empty product
 migration in Sprint 0; readiness performs a parameter-free `SELECT 1` through Prisma. Redis,
 queues, WebSockets, and product-domain modules are intentionally absent.
 
+Mailpit is an optional development-only SMTP capture service under the Compose `email` profile.
+Both its SMTP and browser ports bind to loopback. It is not part of the default stack and is not a
+production mail-delivery dependency.
+
+## Sprint 1 authentication slice
+
+Sprint 1 introduces the `auth` domain and its persistence models without introducing wallet or
+economy writes. Controllers remain transport-only; authentication policy, session rotation,
+credential recovery, email verification, and abuse controls live behind the auth service
+boundary. Email delivery is an SMTP adapter so the domain does not depend on Mailpit or a vendor.
+
+Browser authentication uses a short-lived access JWT in an HttpOnly cookie and a random opaque
+refresh secret in a separate HttpOnly cookie. Only a hash of each refresh secret is persisted.
+Rotation advances a token chain inside one session family; reuse of a consumed token revokes that
+family. Logout revokes the current family, logout-all revokes every family for the user, and a
+successful password reset revokes every existing session for the account.
+
+The access, refresh, and CSRF cookies are host-only (no `Domain`), use `SameSite=Strict`, and are
+`Secure` in production. Paths follow least privilege: access and CSRF use `/api/v1`; refresh uses
+`/api/v1/auth`. This assumes the web and API are served over HTTPS on the same registrable site;
+localhost ports remain same-site for development. Exact CORS and Origin validation still apply.
+Do not deploy the API on a cross-site origin or place untrusted applications on sibling subdomains
+without redesigning the cookie and CSRF topology.
+
+Unsafe requests require `X-CSRF-Token`. `GET /api/v1/auth/csrf` creates an HttpOnly nonce cookie
+and returns an HMAC token bound to that nonce. The nonce rotates with authentication, and the new
+token can be returned by login or refresh. This is intentionally not a JavaScript-readable
+double-submit cookie.
+
+Targeted auth limits are process-local for Sprint 1. This is acceptable only while the API runs as
+one replica; counters reset on restart and cannot coordinate across replicas. A shared limiter
+store is required before horizontal scaling. HMAC-derived subjects avoid retaining raw account
+identifiers as limiter keys.
+
 ## HTTP foundation
 
 Future public API controllers live under `/api/v1`. Operational health routes remain outside that
@@ -148,3 +182,7 @@ Do not implement these until evidence requires them:
 - CDN/object storage for user media
 
 When introduced, preserve domain contracts and keep PostgreSQL authoritative for economic state.
+
+Before adding a second API replica, replace the Sprint 1 in-memory rate-limit store with a shared,
+fail-safe implementation and retest rotation/reuse races. SMTP can move from Mailpit to a managed
+provider without changing auth-domain contracts.

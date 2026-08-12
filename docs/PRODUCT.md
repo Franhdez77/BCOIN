@@ -41,7 +41,10 @@ Validates sessions, scores, economic transactions, ranking periods, reward eligi
 ### US-001 Registration
 As a visitor, I want to create an account so I can use BichoCoin.
 
-Acceptance: unique email/username, secure password storage, strict validation, safe error behavior, automatic wallet creation handled safely.
+Acceptance: unique email/username, secure password storage, strict validation, safe error behavior,
+and automatic wallet creation handled safely once Sprint 2 introduces the wallet and immutable
+ledger together. Sprint 1 registrations are backfilled by that migration; authentication must not
+create an unledgered placeholder balance.
 
 ### US-002 Login/session
 As a user, I want to sign in securely and maintain a revocable session.

@@ -35,14 +35,44 @@ Do not expose implementation details. Use stable application error codes.
 
 ## Authentication
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `POST /auth/logout`
-- `POST /auth/logout-all`
-- `POST /auth/forgot-password`
-- `POST /auth/reset-password`
-- `GET /auth/me`
+The exact Sprint 1 routes, including the base path, are:
+
+- `GET /api/v1/auth/csrf`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/verify-email`
+- `POST /api/v1/auth/resend-verification`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/logout-all`
+- `POST /api/v1/auth/forgot-password`
+- `POST /api/v1/auth/reset-password`
+- `GET /api/v1/auth/me`
+- `GET /api/v1/auth/sessions`
+- `DELETE /api/v1/auth/sessions/:sessionId`
+
+`GET /api/v1/auth/csrf` sets an HttpOnly nonce cookie and returns:
+
+```json
+{
+  "success": true,
+  "data": {
+    "csrfToken": "an-HMAC-bound-to-the-cookie-nonce"
+  },
+  "requestId": "a-server-correlation-id"
+}
+```
+
+Clients send that value as `X-CSRF-Token` and include credentials on every unsafe request. Login
+or refresh can rotate the nonce and return a replacement in the same `data.csrfToken` field. The
+access JWT and opaque refresh credential exist only in HttpOnly cookies; they are not response-body
+fields and must not be stored by browser JavaScript. All unsafe routes above require CSRF, exact
+Origin validation, and compatible Fetch Metadata. Authentication and recovery errors use generic
+responses where account existence would otherwise leak.
+
+OpenAPI UI is available at `/api/docs` and its JSON document at `/api/docs-json` only when
+`OPENAPI_ENABLED=true` and `NODE_ENV` is not `production`. Production keeps both routes disabled
+even if the environment flag is accidentally enabled.
 
 ## User
 

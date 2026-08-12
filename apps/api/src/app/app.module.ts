@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { AuthModule } from '../auth/auth.module';
 import { GlobalExceptionFilter } from '../common/errors/global-exception.filter';
 import { ResponseEnvelopeInterceptor } from '../common/interceptors/response-envelope.interceptor';
 import { getEnvironmentFilePaths, validateEnvironment } from '../config/environment';
@@ -14,6 +15,7 @@ import { HealthModule } from '../health/health.module';
       isGlobal: true,
       validate: validateEnvironment,
     }),
+    AuthModule,
     HealthModule,
   ],
   providers: [GlobalExceptionFilter, ResponseEnvelopeInterceptor],
