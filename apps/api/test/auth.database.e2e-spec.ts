@@ -477,7 +477,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
       .send({ token: expiredToken, newPassword: 'another secure phrase' })
       .expect(400)
       .expect(({ body }) =>
-        expect((body as ErrorBody).error.code).toBe('INVALID_PASSWORD_RESET_TOKEN'),
+        expect((body as ErrorBody).error.code).toBe('PASSWORD_RESET_INVALID'),
       );
 
     const replacementCsrf = await issueCsrf(agent);
@@ -637,10 +637,11 @@ describeDatabase('authentication PostgreSQL integration', () => {
       .set('X-CSRF-Token', csrf)
       .expect(404);
 
+    const bolaCsrf = await issueCsrf(secondAgent);
     const bolaResponse = await secondAgent
       .delete(`/api/v1/auth/sessions/${ownerSession.id}`)
       .set('Origin', ORIGIN)
-      .set('X-CSRF-Token', await issueCsrf(secondAgent))
+      .set('X-CSRF-Token', bolaCsrf)
       .expect(404);
     expect(normalizeCookies(bolaResponse.headers['set-cookie']).join(';')).not.toContain(
       'bichocoin_access=;',
