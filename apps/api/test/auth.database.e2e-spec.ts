@@ -476,9 +476,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
       .set('X-CSRF-Token', expiredCsrf)
       .send({ token: expiredToken, newPassword: 'another secure phrase' })
       .expect(400)
-      .expect(({ body }) =>
-        expect((body as ErrorBody).error.code).toBe('PASSWORD_RESET_INVALID'),
-      );
+      .expect(({ body }) => expect((body as ErrorBody).error.code).toBe('PASSWORD_RESET_INVALID'));
 
     const replacementCsrf = await issueCsrf(agent);
     await agent
