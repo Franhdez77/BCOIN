@@ -21,4 +21,3 @@ function bounded(value: string | undefined, maximum: number): string | null {
   if (value === undefined || value === '') return null;
   return value.slice(0, maximum);
 }
-

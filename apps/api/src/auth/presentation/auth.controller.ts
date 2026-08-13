@@ -25,7 +25,14 @@ import { RateLimit } from '../decorators/rate-limit-policy.decorator';
 import type { AuthenticatedPrincipal } from '../domain/auth.types';
 import type { PublicUser } from '../domain/auth.types';
 import { AuthCookieService } from '../infrastructure/auth-cookie.service';
-import { EmailDto, LoginDto, RegisterDto, ResetPasswordDto, SessionIdDto, TokenDto } from './dto/auth.dto';
+import {
+  EmailDto,
+  LoginDto,
+  RegisterDto,
+  ResetPasswordDto,
+  SessionIdDto,
+  TokenDto,
+} from './dto/auth.dto';
 import {
   ApiAcceptedDataDto,
   ApiAuthenticationDataDto,

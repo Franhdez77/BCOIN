@@ -17,7 +17,10 @@ describe('non-production OpenAPI document', () => {
       .overrideProvider(PrismaService)
       .useValue({ $disconnect: jest.fn().mockResolvedValue(undefined) })
       .compile();
-    app = module.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+    app = module.createNestApplication<NestExpressApplication>({
+      bodyParser: false,
+      logger: false,
+    });
     const config = app.get(ConfigService);
     jest.spyOn(config, 'getOrThrow').mockImplementation((property: string) => {
       if (property === 'OPENAPI_ENABLED') return true;
@@ -63,9 +66,11 @@ describe('non-production OpenAPI document', () => {
       '/api/v1/auth/sessions/{sessionId}',
     ];
 
-    expect(Object.keys(document.paths).filter((path) => path.startsWith('/api/v1/auth')).sort()).toEqual(
-      expectedPaths.sort(),
-    );
+    expect(
+      Object.keys(document.paths)
+        .filter((path) => path.startsWith('/api/v1/auth'))
+        .sort(),
+    ).toEqual(expectedPaths.sort());
     expect(document.components.securitySchemes.accessCookie).toMatchObject({
       type: 'apiKey',
       in: 'cookie',
@@ -83,12 +88,8 @@ describe('non-production OpenAPI document', () => {
     });
     expect(document.paths['/api/v1/auth/csrf']?.get?.security).toBeUndefined();
     expect(document.paths['/api/v1/auth/register']?.post?.security).toBeUndefined();
-    expect(document.paths['/api/v1/auth/me']?.get?.security).toEqual([
-      { accessCookie: [] },
-    ]);
-    expect(document.paths['/api/v1/auth/refresh']?.post?.security).toEqual([
-      { refreshCookie: [] },
-    ]);
+    expect(document.paths['/api/v1/auth/me']?.get?.security).toEqual([{ accessCookie: [] }]);
+    expect(document.paths['/api/v1/auth/refresh']?.post?.security).toEqual([{ refreshCookie: [] }]);
     expect(document.paths['/api/v1/auth/register']?.post?.parameters).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ in: 'header', name: 'Origin', required: true }),

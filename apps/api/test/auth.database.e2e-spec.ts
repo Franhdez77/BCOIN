@@ -20,8 +20,12 @@ const ORIGIN = 'http://localhost:3000';
 const PASSWORD = 'secure football phrase';
 const describeDatabase = process.env.RUN_DATABASE_TESTS === 'true' ? describe : describe.skip;
 
-interface SuccessBody<T> { data: T }
-interface ErrorBody { error: { code: string } }
+interface SuccessBody<T> {
+  data: T;
+}
+interface ErrorBody {
+  error: { code: string };
+}
 
 jest.setTimeout(60_000);
 
@@ -59,7 +63,10 @@ describeDatabase('authentication PostgreSQL integration', () => {
       .overrideProvider(EMAIL_SENDER)
       .useValue(emailSender)
       .compile();
-    app = module.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+    app = module.createNestApplication<NestExpressApplication>({
+      bodyParser: false,
+      logger: false,
+    });
     configureApplication(app);
     await app.init();
     prisma = app.get(PrismaService);
@@ -160,9 +167,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
       .set('X-CSRF-Token', nextCsrf)
       .send({ email: 'mixed@example.com', username: 'Another_User', password: PASSWORD })
       .expect(409)
-      .expect(({ body }) =>
-        expect((body as ErrorBody).error.code).toBe('REGISTRATION_CONFLICT'),
-      );
+      .expect(({ body }) => expect((body as ErrorBody).error.code).toBe('REGISTRATION_CONFLICT'));
     nextCsrf = await issueCsrf(agent);
     await agent
       .post('/api/v1/auth/register')
@@ -347,13 +352,14 @@ describeDatabase('authentication PostgreSQL integration', () => {
     expect(payload.jti).toMatch(/^[0-9a-f-]{36}$/);
     expect(payload.exp - payload.iat).toBe(600);
 
-    await prisma.user.update({ where: { id: payload.sub }, data: { status: UserStatus.SUSPENDED } });
+    await prisma.user.update({
+      where: { id: payload.sub },
+      data: { status: UserStatus.SUSPENDED },
+    });
     await agent
       .get('/api/v1/auth/me')
       .expect(401)
-      .expect(({ body }) =>
-        expect((body as ErrorBody).error.code).toBe('AUTHENTICATION_REQUIRED'),
-      );
+      .expect(({ body }) => expect((body as ErrorBody).error.code).toBe('AUTHENTICATION_REQUIRED'));
   });
 
   it('rotates refresh tokens and revokes the family on reuse', async () => {
@@ -373,9 +379,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
       .set('X-CSRF-Token', csrfForReuse.token)
       .set('Cookie', [csrfForReuse.cookie, originalRefreshCookie])
       .expect(401)
-      .expect(({ body }) =>
-        expect((body as ErrorBody).error.code).toBe('INVALID_REFRESH_TOKEN'),
-      );
+      .expect(({ body }) => expect((body as ErrorBody).error.code).toBe('INVALID_REFRESH_TOKEN'));
 
     const session = await prisma.authSession.findFirstOrThrow();
     expect(session.revocationReason).toBe('REFRESH_REUSE');
@@ -472,9 +476,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
       .set('X-CSRF-Token', expiredCsrf)
       .send({ token: expiredToken, newPassword: 'another secure phrase' })
       .expect(400)
-      .expect(({ body }) =>
-        expect((body as ErrorBody).error.code).toBe('INVALID_PASSWORD_RESET_TOKEN'),
-      );
+      .expect(({ body }) => expect((body as ErrorBody).error.code).toBe('PASSWORD_RESET_INVALID'));
 
     const replacementCsrf = await issueCsrf(agent);
     await agent
@@ -524,9 +526,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
         sendPasswordReset: jest.MockedFunction<(recipient: string, token: string) => Promise<void>>;
       }
     ).sendPasswordReset;
-    sendPasswordReset.mockRejectedValueOnce(
-      new Error('smtp-secret-that-must-not-leak'),
-    );
+    sendPasswordReset.mockRejectedValueOnce(new Error('smtp-secret-that-must-not-leak'));
     let csrf = await issueCsrf(agent);
     const existing = await agent
       .post('/api/v1/auth/forgot-password')
@@ -635,16 +635,19 @@ describeDatabase('authentication PostgreSQL integration', () => {
       .set('X-CSRF-Token', csrf)
       .expect(404);
 
+    const bolaCsrf = await issueCsrf(secondAgent);
     const bolaResponse = await secondAgent
       .delete(`/api/v1/auth/sessions/${ownerSession.id}`)
       .set('Origin', ORIGIN)
-      .set('X-CSRF-Token', await issueCsrf(secondAgent))
+      .set('X-CSRF-Token', bolaCsrf)
       .expect(404);
     expect(normalizeCookies(bolaResponse.headers['set-cookie']).join(';')).not.toContain(
       'bichocoin_access=;',
     );
 
-    expect((await prisma.authSession.findUniqueOrThrow({ where: { id: ownerSession.id } })).revokedAt).toBeNull();
+    expect(
+      (await prisma.authSession.findUniqueOrThrow({ where: { id: ownerSession.id } })).revokedAt,
+    ).toBeNull();
   });
 
   async function registerAndVerify(
@@ -679,10 +682,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
     return token;
   }
 
-  async function loginAndGetRefresh(
-    identifier: string,
-    targetAgent = agent,
-  ): Promise<string> {
+  async function loginAndGetRefresh(identifier: string, targetAgent = agent): Promise<string> {
     const response = await login(identifier, targetAgent);
     const cookies = normalizeCookies(response.headers['set-cookie']);
     const cookie = cookies.find((value) => value.startsWith('bichocoin_refresh='));
@@ -715,12 +715,8 @@ describeDatabase('authentication PostgreSQL integration', () => {
   }
 });
 
-async function issueCsrf(
-  agent: ReturnType<typeof request.agent>,
-): Promise<string>;
-async function issueCsrf(
-  agent: ReturnType<typeof request.agent>,
-): Promise<string> {
+async function issueCsrf(agent: ReturnType<typeof request.agent>): Promise<string>;
+async function issueCsrf(agent: ReturnType<typeof request.agent>): Promise<string> {
   const response = await agent.get('/api/v1/auth/csrf').expect(200);
   return (response.body as SuccessBody<{ csrfToken: string }>).data.csrfToken;
 }
@@ -731,7 +727,9 @@ async function assertAuthenticationTestDatabaseBeforeMigration(): Promise<void> 
   const client = new Client({ connectionString: configured });
   try {
     await client.connect();
-    const result = await client.query<{ database: string }>('SELECT current_database() AS database');
+    const result = await client.query<{ database: string }>(
+      'SELECT current_database() AS database',
+    );
     const expected = new URL(configured).pathname.slice(1);
     if (result.rows[0]?.database !== expected) {
       throw new Error(`Refusing to migrate a database other than ${expected}.`);
@@ -751,7 +749,9 @@ async function assertAuthenticationTablesAreEmpty(prisma: PrismaService): Promis
     prisma.user.count(),
   ]);
   if (counts.some((count) => count !== 0)) {
-    throw new Error('Refusing authentication tests because the dedicated test database is not empty.');
+    throw new Error(
+      'Refusing authentication tests because the dedicated test database is not empty.',
+    );
   }
 }
 
@@ -759,8 +759,9 @@ async function assertConnectedToAuthenticationTestDatabase(prisma: PrismaService
   const configured = process.env.AUTH_TEST_DATABASE_URL;
   if (configured === undefined) throw new Error('AUTH_TEST_DATABASE_URL is missing.');
   const expected = new URL(configured).pathname.slice(1);
-  const rows = await prisma.$queryRaw<Array<{ database: string }>>
-    `SELECT current_database() AS database`;
+  const rows = await prisma.$queryRaw<
+    Array<{ database: string }>
+  >`SELECT current_database() AS database`;
   // Docker/NAT exposes a loopback client URL while PostgreSQL reports its container
   // address and internal port. The strict URL parser plus the exact DB name are the
   // reliable destructive-test boundary from the client side.

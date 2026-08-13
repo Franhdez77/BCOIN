@@ -62,10 +62,7 @@ export function configureApplication(app: NestExpressApplication): void {
   app.useGlobalInterceptors(app.get(ResponseEnvelopeInterceptor));
   app.useGlobalFilters(app.get(GlobalExceptionFilter));
 
-  if (
-    nodeEnvironment !== 'production' &&
-    config.getOrThrow('OPENAPI_ENABLED', { infer: true })
-  ) {
+  if (nodeEnvironment !== 'production' && config.getOrThrow('OPENAPI_ENABLED', { infer: true })) {
     const document = SwaggerModule.createDocument(
       app,
       new DocumentBuilder()

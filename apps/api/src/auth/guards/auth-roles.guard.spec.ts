@@ -36,7 +36,9 @@ describe('authorization guards', () => {
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue(false),
     } as unknown as Reflector;
-    const cookies = { getAccessToken: jest.fn().mockReturnValue('jwt') } as unknown as AuthCookieService;
+    const cookies = {
+      getAccessToken: jest.fn().mockReturnValue('jwt'),
+    } as unknown as AuthCookieService;
     const tokens = {
       verify: jest.fn().mockResolvedValue({
         sub: principal.userId,
@@ -57,7 +59,9 @@ describe('authorization guards', () => {
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue(false),
     } as unknown as Reflector;
-    const cookies = { getAccessToken: jest.fn().mockReturnValue('jwt') } as unknown as AuthCookieService;
+    const cookies = {
+      getAccessToken: jest.fn().mockReturnValue('jwt'),
+    } as unknown as AuthCookieService;
     const tokens = {
       verify: jest.fn().mockResolvedValue({
         sub: principal.userId,

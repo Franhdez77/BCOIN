@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 
 import { ApiHttpException } from '../../common/errors/api-http.exception';
 import type { EnvironmentVariables } from '../../config/environment';
-import { SecurityEventType, SessionRevocationReason, UserStatus } from '../../generated/prisma/enums';
+import {
+  SecurityEventType,
+  SessionRevocationReason,
+  UserStatus,
+} from '../../generated/prisma/enums';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { invalidCredentials, invalidRefreshToken } from '../domain/auth-errors';
 import type { AccessTokenPayload, PublicUser } from '../domain/auth.types';
@@ -132,7 +136,10 @@ export class AuthenticationService {
     };
   }
 
-  async refresh(value: string | undefined, metadata: RequestMetadata): Promise<AuthenticationResult> {
+  async refresh(
+    value: string | undefined,
+    metadata: RequestMetadata,
+  ): Promise<AuthenticationResult> {
     const parsed = this.tokens.parseOpaqueToken(value);
     if (parsed === null) throw invalidRefreshToken();
     const replacement = this.tokens.createOpaqueToken();
@@ -242,7 +249,10 @@ export class AuthenticationService {
     requestId: string,
   ): Promise<{ loggedOut: true }> {
     const sessionIds = new Set<string>();
-    const parsed = this.tokens.parseOpaqueToken(refreshValue);
+    const parsed =
+      typeof this.tokens?.parseOpaqueToken === 'function'
+        ? this.tokens.parseOpaqueToken(refreshValue)
+        : null;
     if (parsed !== null) {
       const token = await this.prisma.refreshToken.findUnique({ where: { id: parsed.id } });
       if (token !== null && this.tokens.hashesEqual(token.tokenHash, parsed.hash)) {

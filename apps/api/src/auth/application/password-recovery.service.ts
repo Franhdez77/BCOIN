@@ -26,7 +26,9 @@ export class PasswordRecoveryService {
 
   async request(emailInput: string, metadata: RequestMetadata): Promise<{ accepted: true }> {
     const email = normalizeEmail(emailInput);
-    const user = await this.prisma.user.findUnique({ where: { emailNormalized: email.normalized } });
+    const user = await this.prisma.user.findUnique({
+      where: { emailNormalized: email.normalized },
+    });
     if (user === null || user.emailVerifiedAt === null) {
       return { accepted: true };
     }

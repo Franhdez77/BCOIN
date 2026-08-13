@@ -32,4 +32,3 @@ export function normalizeUsername(value: string): { display: string; normalized:
   const display = value.trim().normalize('NFC');
   return { display, normalized: display.normalize('NFKC').toLowerCase() };
 }
-

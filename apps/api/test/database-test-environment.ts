@@ -1,6 +1,4 @@
-export function resolveAuthenticationTestDatabaseUrl(
-  environment: NodeJS.ProcessEnv,
-): string {
+export function resolveAuthenticationTestDatabaseUrl(environment: NodeJS.ProcessEnv): string {
   const value = environment.AUTH_TEST_DATABASE_URL?.trim();
   if (value === undefined || value === '') {
     throw new Error('AUTH_TEST_DATABASE_URL is required when RUN_DATABASE_TESTS=true.');

@@ -123,24 +123,24 @@ services with `docker compose down`; the PostgreSQL named volume remains intact.
 `.env` and all environment-specific variants are ignored by Git. `.env.example` contains only
 local placeholders.
 
-| Variable                                                             | Purpose                                                                            |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `NODE_ENV`                                                           | Runtime mode: `development`, `test`, or `production`.                              |
-| `PORT`                                                               | Next.js HTTP port, loaded before the development server starts.                    |
-| `API_PORT`                                                           | NestJS HTTP port.                                                                  |
-| `CORS_ALLOWED_ORIGINS`                                               | Comma-separated exact browser origins; wildcards are rejected.                     |
-| `NEXT_PUBLIC_API_BASE_URL`                                           | Public API origin embedded in the web bundle. Never place a secret here.           |
-| `WEB_APP_BASE_URL`                                                   | Trusted web origin used for Origin checks and account-action links.                |
-| `DATABASE_URL`                                                       | PostgreSQL connection used by Prisma at runtime.                                   |
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` | Local Compose database configuration.                                              |
-| `RUN_DATABASE_TESTS`, `AUTH_TEST_DATABASE_URL`                       | Opt into real auth tests against a dedicated loopback database ending in `_test`.  |
-| `JWT_SIGNING_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`                   | Access-token signing and claim validation.                                         |
-| `*_TTL_SECONDS`                                                      | Access, refresh, verification, and reset lifetimes.                                |
-| `CSRF_HMAC_SECRET`, `RATE_LIMIT_HMAC_SECRET`                         | Independent HMAC keys; generate distinct random production values.                 |
-| `AUTH_*_COOKIE_NAME`, `COOKIE_SECURE`                                | Host-only authentication-cookie names and production transport policy.             |
-| `AUTH_*_RATE_LIMIT_*`                                                | Per-operation authentication abuse limits.                                         |
-| `SMTP_*`                                                             | Account-email transport; production requires implicit TLS or required STARTTLS.    |
-| `OPENAPI_ENABLED`                                                    | Enables non-production API documentation when explicitly set to `true`.            |
+| Variable                                                             | Purpose                                                                           |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                           | Runtime mode: `development`, `test`, or `production`.                             |
+| `PORT`                                                               | Next.js HTTP port, loaded before the development server starts.                   |
+| `API_PORT`                                                           | NestJS HTTP port.                                                                 |
+| `CORS_ALLOWED_ORIGINS`                                               | Comma-separated exact browser origins; wildcards are rejected.                    |
+| `NEXT_PUBLIC_API_BASE_URL`                                           | Public API origin embedded in the web bundle. Never place a secret here.          |
+| `WEB_APP_BASE_URL`                                                   | Trusted web origin used for Origin checks and account-action links.               |
+| `DATABASE_URL`                                                       | PostgreSQL connection used by Prisma at runtime.                                  |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` | Local Compose database configuration.                                             |
+| `RUN_DATABASE_TESTS`, `AUTH_TEST_DATABASE_URL`                       | Opt into real auth tests against a dedicated loopback database ending in `_test`. |
+| `JWT_SIGNING_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`                   | Access-token signing and claim validation.                                        |
+| `*_TTL_SECONDS`                                                      | Access, refresh, verification, and reset lifetimes.                               |
+| `CSRF_HMAC_SECRET`, `RATE_LIMIT_HMAC_SECRET`                         | Independent HMAC keys; generate distinct random production values.                |
+| `AUTH_*_COOKIE_NAME`, `COOKIE_SECURE`                                | Host-only authentication-cookie names and production transport policy.            |
+| `AUTH_*_RATE_LIMIT_*`                                                | Per-operation authentication abuse limits.                                        |
+| `SMTP_*`                                                             | Account-email transport; production requires implicit TLS or required STARTTLS.   |
+| `OPENAPI_ENABLED`                                                    | Enables non-production API documentation when explicitly set to `true`.           |
 
 The API validates required runtime configuration and fails before listening when it is missing or
 invalid. Production configuration belongs in the deployment platform's secret manager, not in

@@ -97,7 +97,10 @@ describe('TargetedRateLimitGuard', () => {
   }
 });
 
-function context(ip: string, identifier: string): {
+function context(
+  ip: string,
+  identifier: string,
+): {
   context: ExecutionContext;
   headers: Map<string, unknown>;
 } {
@@ -109,7 +112,9 @@ function context(ip: string, identifier: string): {
       getHandler: () => () => undefined,
       switchToHttp: () => ({
         getRequest: () => ({ ip, body: { identifier } }),
-        getResponse: () => ({ setHeader: (name: string, value: unknown) => headers.set(name, value) }),
+        getResponse: () => ({
+          setHeader: (name: string, value: unknown) => headers.set(name, value),
+        }),
         getNext: () => undefined,
       }),
     } as unknown as ExecutionContext,
