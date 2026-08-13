@@ -229,10 +229,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   }
 }
 
-export function authApiRequest<T>(
-  path: string,
-  options: ApiRequestOptions = {},
-): Promise<T> {
+export function authApiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   if (!path.startsWith('/') || path.startsWith('//')) {
     return Promise.reject(new ApiClientError('API_PATH_INVALID', 0));
   }

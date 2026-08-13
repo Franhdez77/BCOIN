@@ -417,8 +417,12 @@ async function assertConnectedDatabase(prisma: PrismaService): Promise<void> {
   if (configured === undefined) throw new Error('AUTH_TEST_DATABASE_URL is missing.');
 
   const expected = new URL(configured).pathname.slice(1);
-  const result = await prisma.$queryRaw<Array<{ database: string }>>`SELECT current_database() AS database`;
+  const result = await prisma.$queryRaw<
+    Array<{ database: string }>
+  >`SELECT current_database() AS database`;
   if (!expected.endsWith('_test') || result[0]?.database !== expected) {
-    throw new Error('Refusing destructive Sprint 2 test cleanup outside the dedicated test database.');
+    throw new Error(
+      'Refusing destructive Sprint 2 test cleanup outside the dedicated test database.',
+    );
   }
 }
