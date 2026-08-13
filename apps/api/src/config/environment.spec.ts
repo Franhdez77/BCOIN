@@ -167,7 +167,11 @@ describe('validateEnvironment', () => {
 
   it('requires HTTPS web and CORS origins plus encrypted SMTP in production', () => {
     expect(() =>
-      validateEnvironment({ ...VALID_ENVIRONMENT, ...PRODUCTION_OVERRIDES, COOKIE_SECURE: 'false' }),
+      validateEnvironment({
+        ...VALID_ENVIRONMENT,
+        ...PRODUCTION_OVERRIDES,
+        COOKIE_SECURE: 'false',
+      }),
     ).toThrow('COOKIE_SECURE must be true in production.');
     expect(() =>
       validateEnvironment({

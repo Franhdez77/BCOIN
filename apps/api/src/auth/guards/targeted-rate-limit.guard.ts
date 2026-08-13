@@ -42,11 +42,9 @@ export class TargetedRateLimitGuard implements CanActivate {
     const now = Date.now();
     if (now >= this.nextPruneAt) this.prune(now);
     const ipKey = `${policy}:ip:${this.hash(request.ip ?? 'unknown-client')}`;
-    const subjectKey =
-      subject === '' ? undefined : `${policy}:subject:${this.hash(subject)}`;
+    const subjectKey = subject === '' ? undefined : `${policy}:subject:${this.hash(subject)}`;
     const missingIpBucket = !this.buckets.has(ipKey);
-    const missingSubjectBucket =
-      subjectKey !== undefined && !this.buckets.has(subjectKey);
+    const missingSubjectBucket = subjectKey !== undefined && !this.buckets.has(subjectKey);
     const requiredCapacity = Number(missingIpBucket) + Number(missingSubjectBucket);
     if (this.buckets.size + requiredCapacity > MAX_ACTIVE_RATE_LIMIT_BUCKETS) {
       this.reject(response, settings.maximum, settings.windowSeconds);
@@ -60,8 +58,7 @@ export class TargetedRateLimitGuard implements CanActivate {
 
     if (subjectKey === undefined) return true;
     const subjectBucket = this.increment(subjectKey, now, settings.windowSeconds);
-    const limitingBucket =
-      subjectBucket.count > ipBucket.count ? subjectBucket : ipBucket;
+    const limitingBucket = subjectBucket.count > ipBucket.count ? subjectBucket : ipBucket;
     this.setHeaders(response, settings.maximum, limitingBucket, now);
     if (subjectBucket.count > settings.maximum) {
       this.reject(response, settings.maximum, secondsUntil(subjectBucket.resetAt, now));
@@ -111,10 +108,7 @@ export class TargetedRateLimitGuard implements CanActivate {
   }
 
   private hash(value: string): string {
-    return createHmac(
-      'sha256',
-      this.config.getOrThrow('RATE_LIMIT_HMAC_SECRET', { infer: true }),
-    )
+    return createHmac('sha256', this.config.getOrThrow('RATE_LIMIT_HMAC_SECRET', { infer: true }))
       .update(value)
       .digest('hex');
   }

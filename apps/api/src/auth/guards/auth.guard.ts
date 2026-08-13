@@ -28,9 +28,9 @@ export class AuthGuard implements CanActivate {
     ) {
       return true;
     }
-    const request = context.switchToHttp().getRequest<
-      Request & { user?: AuthenticatedPrincipal }
-    >();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthenticatedPrincipal }>();
     const rawToken = this.cookies.getAccessToken(request);
     if (rawToken === undefined) throw invalidSession();
     let payload;

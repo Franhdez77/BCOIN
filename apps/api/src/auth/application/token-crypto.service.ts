@@ -27,9 +27,10 @@ export class TokenCryptoService {
     value: string | undefined,
   ): { id: string; hash: Uint8Array<ArrayBuffer> } | null {
     if (value === undefined) return null;
-    const match = /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})$/i.exec(
-      value,
-    );
+    const match =
+      /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})$/i.exec(
+        value,
+      );
     if (match === null || match[1] === undefined || match[2] === undefined) return null;
     return { id: match[1], hash: this.hashToken(match[2]) };
   }
@@ -39,10 +40,7 @@ export class TokenCryptoService {
   }
 
   subjectHash(subject: string): string {
-    return createHmac(
-      'sha256',
-      this.config.getOrThrow('RATE_LIMIT_HMAC_SECRET', { infer: true }),
-    )
+    return createHmac('sha256', this.config.getOrThrow('RATE_LIMIT_HMAC_SECRET', { infer: true }))
       .update(subject, 'utf8')
       .digest('hex');
   }

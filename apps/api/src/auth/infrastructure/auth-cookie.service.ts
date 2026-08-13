@@ -28,9 +28,9 @@ export class AuthCookieService {
       ...this.baseCookieOptions(AUTH_CSRF_COOKIE_PATH),
       maxAge: CSRF_TOKEN_TTL_SECONDS * 1_000,
     });
-    const payload = Buffer.from(JSON.stringify({ nonce, expiresAt } satisfies CsrfPayload)).toString(
-      'base64url',
-    );
+    const payload = Buffer.from(
+      JSON.stringify({ nonce, expiresAt } satisfies CsrfPayload),
+    ).toString('base64url');
     return `${payload}.${this.sign(payload)}`;
   }
 
@@ -46,7 +46,8 @@ export class AuthCookieService {
 
     try {
       const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as unknown;
-      if (!isCsrfPayload(decoded) || decoded.expiresAt < Math.floor(Date.now() / 1_000)) return false;
+      if (!isCsrfPayload(decoded) || decoded.expiresAt < Math.floor(Date.now() / 1_000))
+        return false;
       const nonce = request.cookies[
         this.config.getOrThrow('AUTH_CSRF_COOKIE_NAME', { infer: true })
       ] as unknown;

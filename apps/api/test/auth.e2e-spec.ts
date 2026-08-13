@@ -17,8 +17,12 @@ import { PrismaService } from '../src/infrastructure/prisma/prisma.service';
 const ORIGIN = 'http://localhost:3000';
 const REFRESH_TOKEN = `${crypto.randomUUID()}.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`;
 
-interface SuccessBody<T> { data: T }
-interface ErrorBody { error: { code: string } }
+interface SuccessBody<T> {
+  data: T;
+}
+interface ErrorBody {
+  error: { code: string };
+}
 
 describe('authentication HTTP contract', () => {
   let app: NestExpressApplication;
@@ -72,7 +76,10 @@ describe('authentication HTTP contract', () => {
       })
       .compile();
 
-    app = module.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+    app = module.createNestApplication<NestExpressApplication>({
+      bodyParser: false,
+      logger: false,
+    });
     configureApplication(app);
     await app.init();
     agent = request.agent(app.getHttpServer());
@@ -100,9 +107,7 @@ describe('authentication HTTP contract', () => {
       .set('Origin', ORIGIN)
       .send({ email: 'new@example.com', username: 'NewPlayer', password: 'long password phrase' })
       .expect(403)
-      .expect(({ body }) =>
-        expect((body as ErrorBody).error.code).toBe('CSRF_VALIDATION_FAILED'),
-      );
+      .expect(({ body }) => expect((body as ErrorBody).error.code).toBe('CSRF_VALIDATION_FAILED'));
 
     expect(verification.register).not.toHaveBeenCalled();
   });
@@ -159,7 +164,11 @@ describe('authentication HTTP contract', () => {
 
     const serialized = JSON.stringify(response.body);
     const rawCookies = response.headers['set-cookie'];
-    const cookies = Array.isArray(rawCookies) ? rawCookies : rawCookies === undefined ? [] : [rawCookies];
+    const cookies = Array.isArray(rawCookies)
+      ? rawCookies
+      : rawCookies === undefined
+        ? []
+        : [rawCookies];
     expect(serialized).not.toContain('signed-access-token');
     expect(serialized).not.toContain(REFRESH_TOKEN);
     expect(cookies.some((cookie: string) => cookie.includes('Path=/api/v1;'))).toBe(true);
@@ -172,9 +181,7 @@ describe('authentication HTTP contract', () => {
     await request(app.getHttpServer())
       .get('/api/v1/auth/me')
       .expect(401)
-      .expect(({ body }) =>
-        expect((body as ErrorBody).error.code).toBe('AUTHENTICATION_REQUIRED'),
-      );
+      .expect(({ body }) => expect((body as ErrorBody).error.code).toBe('AUTHENTICATION_REQUIRED'));
   });
 
   it('rejects form-encoded auth payloads', async () => {

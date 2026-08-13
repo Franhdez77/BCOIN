@@ -29,12 +29,7 @@ export class SmtpEmailSender implements EmailSender {
   }
 
   sendEmailVerification(recipient: string, token: string): Promise<void> {
-    return this.send(
-      recipient,
-      'Verify your BichoCoin email',
-      'verify-email',
-      token,
-    );
+    return this.send(recipient, 'Verify your BichoCoin email', 'verify-email', token);
   }
 
   sendPasswordReset(recipient: string, token: string): Promise<void> {
