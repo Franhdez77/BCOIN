@@ -107,6 +107,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
     });
     expect(JSON.stringify(login.body)).not.toContain('passwordHash');
     expect(await prisma.authSession.count()).toBe(1);
+    expect(await prisma.wallet.count()).toBe(1);
 
     await agent
       .get('/api/v1/auth/me')
@@ -711,6 +712,7 @@ describeDatabase('authentication PostgreSQL integration', () => {
     await prisma?.authSession.deleteMany();
     await prisma?.emailVerificationToken.deleteMany();
     await prisma?.passwordResetToken.deleteMany();
+    await prisma?.wallet.deleteMany();
     await prisma?.user.deleteMany();
   }
 });
@@ -746,6 +748,8 @@ async function assertAuthenticationTablesAreEmpty(prisma: PrismaService): Promis
     prisma.authSession.count(),
     prisma.emailVerificationToken.count(),
     prisma.passwordResetToken.count(),
+    prisma.walletTransaction.count(),
+    prisma.wallet.count(),
     prisma.user.count(),
   ]);
   if (counts.some((count) => count !== 0)) {

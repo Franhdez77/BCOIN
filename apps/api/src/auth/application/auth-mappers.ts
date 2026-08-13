@@ -1,4 +1,5 @@
 import type { UserRole, UserStatus } from '../../generated/prisma/enums';
+import { normalizeUsername } from '../../users/domain/username';
 import type { PublicUser } from '../domain/auth.types';
 
 export interface PublicUserSource {
@@ -28,7 +29,4 @@ export function normalizeEmail(value: string): { display: string; normalized: st
   return { display, normalized: display.toLowerCase() };
 }
 
-export function normalizeUsername(value: string): { display: string; normalized: string } {
-  const display = value.trim().normalize('NFC');
-  return { display, normalized: display.normalize('NFKC').toLowerCase() };
-}
+export { normalizeUsername };

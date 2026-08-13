@@ -76,14 +76,36 @@ even if the environment flag is accidentally enabled.
 
 ## User
 
-- `GET /users/me`
-- `PATCH /users/me`
-- `GET /users/me/stats`
+- `GET /users/me` returns the authenticated user's safe profile projection.
+- `PATCH /users/me` accepts only `{ "username": "..." }`.
+- `GET /users/me/stats` is deliberately deferred until Mining/Quiz/Leaderboard domains exist; the
+  API does not invent zero/fake statistics.
+
+Profile routes derive ownership from the authenticated principal. They do not accept `userId` as
+authority. Email, role, status, password, wallet balance, and other sensitive fields cannot be
+changed through the profile DTO.
 
 ## Wallet
 
-- `GET /wallet`
-- `GET /wallet/transactions?cursor=&limit=`
+- `GET /wallet` returns the authenticated user's wallet:
+
+```json
+{
+  "wallet": {
+    "id": "uuid",
+    "currency": "BIC",
+    "balance": "0",
+    "createdAt": "2026-08-13T00:00:00.000Z"
+  }
+}
+```
+
+- `GET /wallet/transactions?cursor=&limit=` returns newest-first immutable ledger history.
+- `limit` defaults to 20 and is capped at 50.
+- economic integers are serialized as decimal strings so browser JavaScript never becomes the
+  authoritative numeric representation.
+- internal idempotency keys, actor/request data, reasons, and safe internal metadata are not
+  returned by the public history API.
 
 No user endpoint exists to directly add/set/subtract balance.
 

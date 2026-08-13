@@ -173,12 +173,28 @@ must treat database TLS verification as a release gate.
 
 ## Economic integrity
 
-- Atomic database transaction for ledger + wallet state.
-- Unique database constraints for idempotency keys/reference tuples.
-- Concurrency tests for mining/reward claims.
-- Do not accept client-calculated amounts.
-- Never edit historical ledger entries for corrections.
-- Audit privileged/manual adjustments.
+Sprint 2 implements the economic foundation:
+
+- one wallet per user is database-backed by unique `wallets.userId`;
+- authoritative BIC state uses PostgreSQL `BIGINT`, never JavaScript floating point;
+- wallet balances cannot become negative;
+- every balance mutation executes with its ledger insert in one serializable transaction;
+- the wallet application service is the only application boundary allowed to mutate balances;
+- idempotency keys and populated source-reference tuples are uniquely constrained;
+- duplicate idempotent requests resolve to the original movement only when the economic intent is
+  identical; key reuse with a different amount/type/reference is rejected;
+- database checks enforce the ledger balance equation and amount/type direction;
+- PostgreSQL triggers reject ledger row `UPDATE` and `DELETE`; corrections require compensating
+  entries;
+- public wallet/profile APIs derive the owner from the live authenticated principal and expose no
+  user-controlled ownership selector;
+- public history is bounded/cursor-paginated and omits internal idempotency, actor, request,
+  reason, and metadata fields;
+- no public endpoint accepts an economic amount or performs add/set/subtract balance operations.
+
+Future Mining/Rewards claims must use this service and add domain-specific concurrency/idempotency
+tests rather than bypassing the wallet boundary. Privileged/manual adjustments remain internal
+until the Admin sprint and must record actor, request/reference, and reason.
 
 ## Game integrity
 

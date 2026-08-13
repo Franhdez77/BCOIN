@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 
 import { PrismaModule } from '../infrastructure/prisma/prisma.module';
+import { UsersModule } from '../users/users.module';
 import { AccessTokenService } from './application/access-token.service';
 import { AccountVerificationService } from './application/account-verification.service';
 import { AuthenticationService } from './application/authentication.service';
@@ -21,7 +22,7 @@ import { SmtpEmailSender } from './infrastructure/smtp-email-sender';
 import { AuthController } from './presentation/auth.controller';
 
 @Module({
-  imports: [PrismaModule, JwtModule.register({})],
+  imports: [PrismaModule, UsersModule, JwtModule.register({})],
   controllers: [AuthController],
   providers: [
     AccessTokenService,

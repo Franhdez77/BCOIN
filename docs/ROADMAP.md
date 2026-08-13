@@ -25,9 +25,14 @@ The Next.js UI uses a per-request nonce CSP and dynamic rendering; production pe
 must preserve equivalent nonce, hash, or tested SRI coverage.
 
 ## Sprint 2 — User + Wallet Ledger
-Profile, one wallet per user, immutable ledger service, transaction history, admin-safe adjustment foundation (not necessarily exposed yet).
+Authenticated profile read/update with username-only mutation; one exact-integer BIC wallet per
+user; migration backfill for Sprint 1 accounts; atomic wallet provisioning for new registrations;
+single wallet application service for all balance mutations; immutable/idempotent ledger;
+cursor-bounded transaction history; frontend profile/wallet integration; internal-only
+admin-adjustment foundation.
 
-Economic gate: no direct balance mutation outside wallet domain; atomic transaction tests pass.
+Economic gate: no direct balance mutation outside wallet domain; database invariants, concurrency,
+idempotency, BOLA/mass-assignment, immutable-history, and atomic transaction tests pass.
 
 ## Sprint 3 — Mining
 Start/current/claim/history, 24-hour policy, one active session, atomic/idempotent claim, concurrency tests.

@@ -3,6 +3,10 @@ import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from '@/lib/api/client';
+import { usersApi } from '@/features/users/users-api';
+import type { UserProfile } from '@/features/users/contracts';
+import { walletApi } from '@/features/wallet/wallet-api';
+import type { WalletSummary, WalletTransactionPage } from '@/features/wallet/contracts';
 
 import { authApi } from '../auth-api';
 import type { AuthResult, AuthSession, AuthUser } from '../contracts';
@@ -29,6 +33,20 @@ vi.mock('../auth-api', () => ({
   },
 }));
 
+vi.mock('@/features/users/users-api', () => ({
+  usersApi: {
+    me: vi.fn(),
+    updateProfile: vi.fn(),
+  },
+}));
+
+vi.mock('@/features/wallet/wallet-api', () => ({
+  walletApi: {
+    transactions: vi.fn(),
+    wallet: vi.fn(),
+  },
+}));
+
 const USER: AuthUser = {
   createdAt: '2026-01-02T03:04:05.000Z',
   email: 'fan@example.com',
@@ -37,6 +55,26 @@ const USER: AuthUser = {
   role: 'USER',
   status: 'ACTIVE',
   username: 'football-fan',
+};
+
+const PROFILE: UserProfile = {
+  createdAt: USER.createdAt,
+  email: USER.email,
+  emailVerified: USER.emailVerified,
+  id: USER.id,
+  status: USER.status,
+  username: USER.username,
+};
+
+const WALLET: WalletSummary = {
+  balance: '0',
+  createdAt: '2026-08-12T00:00:00.000Z',
+  currency: 'BIC',
+  id: 'wallet-1',
+};
+
+const HISTORY: WalletTransactionPage = {
+  transactions: [],
 };
 
 const CURRENT_SESSION: AuthSession = {
@@ -105,6 +143,10 @@ function setDefaultApiResponses(): void {
   vi.mocked(authApi.revokeSession).mockResolvedValue({ revoked: true });
   vi.mocked(authApi.logout).mockResolvedValue({ csrfToken: 'csrf-logout', loggedOut: true });
   vi.mocked(authApi.logoutAll).mockResolvedValue({ csrfToken: 'csrf-logout', loggedOut: true });
+  vi.mocked(usersApi.me).mockResolvedValue({ user: PROFILE });
+  vi.mocked(usersApi.updateProfile).mockResolvedValue({ user: PROFILE });
+  vi.mocked(walletApi.wallet).mockResolvedValue({ wallet: WALLET });
+  vi.mocked(walletApi.transactions).mockResolvedValue(HISTORY);
 }
 
 beforeEach(() => {
@@ -307,27 +349,55 @@ describe('email and password recovery', () => {
 
 describe('account and sessions', () => {
   it('shows loading, then loads profile and sessions, and revokes another session', async () => {
-    const pendingMe = createDeferred<{ user: AuthUser }>();
+    const pendingProfile = createDeferred<{ user: UserProfile }>();
     const pendingSessions = createDeferred<{ sessions: AuthSession[] }>();
-    vi.mocked(authApi.me).mockReturnValue(pendingMe.promise);
+    const pendingWallet = createDeferred<{ wallet: WalletSummary }>();
+    const pendingHistory = createDeferred<WalletTransactionPage>();
+    vi.mocked(usersApi.me).mockReturnValue(pendingProfile.promise);
     vi.mocked(authApi.sessions).mockReturnValue(pendingSessions.promise);
+    vi.mocked(walletApi.wallet).mockReturnValue(pendingWallet.promise);
+    vi.mocked(walletApi.transactions).mockReturnValue(pendingHistory.promise);
     render(<AccountView />);
 
     expect(screen.getByText('Loading your account...')).toBeInTheDocument();
     await act(async () => {
-      pendingMe.resolve({ user: USER });
+      pendingProfile.resolve({ user: PROFILE });
       pendingSessions.resolve({ sessions: [CURRENT_SESSION, OTHER_SESSION] });
-      await Promise.all([pendingMe.promise, pendingSessions.promise]);
+      pendingWallet.resolve({ wallet: WALLET });
+      pendingHistory.resolve(HISTORY);
+      await Promise.all([
+        pendingProfile.promise,
+        pendingSessions.promise,
+        pendingWallet.promise,
+        pendingHistory.promise,
+      ]);
     });
 
     expect(await screen.findByRole('heading', { name: 'Profile' })).toBeInTheDocument();
-    expect(screen.getByText('football-fan')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('football-fan')).toBeInTheDocument();
     expect(screen.getByText('fan@example.com')).toBeInTheDocument();
+    expect(screen.getByText('0 BIC')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Revoke session' }));
 
     await waitFor(() => {
       expect(authApi.revokeSession).toHaveBeenCalledWith('session-other', false);
       expect(screen.queryByRole('button', { name: 'Revoke session' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('updates only the editable username through the profile API', async () => {
+    vi.mocked(usersApi.updateProfile).mockResolvedValue({
+      user: { ...PROFILE, username: 'updated_player' },
+    });
+    render(<AccountView />);
+    await screen.findByRole('heading', { name: 'Profile' });
+
+    changeField('Username', 'updated_player');
+    submitForm('Save username');
+
+    await waitFor(() => {
+      expect(usersApi.updateProfile).toHaveBeenCalledWith({ username: 'updated_player' });
+      expect(screen.getByDisplayValue('updated_player')).toBeInTheDocument();
     });
   });
 
@@ -377,7 +447,7 @@ describe('account and sessions', () => {
 
   it('redirects an expired account session without rendering protected data', async () => {
     const navigate = vi.fn();
-    vi.mocked(authApi.me).mockRejectedValue(new ApiClientError('SESSION_INVALID', 401));
+    vi.mocked(usersApi.me).mockRejectedValue(new ApiClientError('SESSION_INVALID', 401));
     render(<AccountView navigate={navigate} />);
 
     await waitFor(() => {

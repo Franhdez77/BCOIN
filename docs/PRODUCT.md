@@ -57,6 +57,8 @@ As a user, I want a secure single-use password reset flow.
 
 ### US-005 Profile
 As a user, I want to view/update allowed profile data and see relevant aggregate statistics.
+Sprint 2 permits username updates only. Aggregate statistics remain deferred until the domains
+that produce real Mining/Quiz/Leaderboard data exist.
 
 ### US-006 Wallet
 As a user, I want to view my current internal BIC balance.

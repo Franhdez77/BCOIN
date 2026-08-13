@@ -97,6 +97,31 @@ one replica; counters reset on restart and cannot coordinate across replicas. A 
 store is required before horizontal scaling. HMAC-derived subjects avoid retaining raw account
 identifiers as limiter keys.
 
+## Sprint 2 user and economy slice
+
+Sprint 2 adds independent `users` and `wallet` modules. `users` owns safe profile behavior and
+account provisioning; `wallet` owns wallet creation, balance mutation, immutable ledger writes,
+and wallet/history queries.
+
+Registration keeps one transaction boundary:
+
+```text
+auth registration
+  -> UserProvisioningService
+       -> create User
+       -> WalletProvisioningService
+            -> create zero-balance Wallet
+```
+
+Authentication does not write ledger rows and does not manipulate `wallet.balance`. Future Mining,
+Rewards, and administrative adjustment flows must call `WalletApplicationService.recordMovement`
+instead of writing the wallet table directly.
+
+Serializable PostgreSQL transactions with bounded retry protect concurrent balance changes.
+Idempotency is additionally enforced by unique database keys. The web layer receives BIC values as
+decimal strings, treats them as display state only, and never persists an authoritative balance in
+browser storage.
+
 ## HTTP foundation
 
 Future public API controllers live under `/api/v1`. Operational health routes remain outside that

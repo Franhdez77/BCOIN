@@ -6,6 +6,8 @@ import { GlobalExceptionFilter } from '../common/errors/global-exception.filter'
 import { ResponseEnvelopeInterceptor } from '../common/interceptors/response-envelope.interceptor';
 import { getEnvironmentFilePaths, validateEnvironment } from '../config/environment';
 import { HealthModule } from '../health/health.module';
+import { UsersModule } from '../users/users.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { HealthModule } from '../health/health.module';
       validate: validateEnvironment,
     }),
     AuthModule,
+    UsersModule,
+    WalletModule,
     HealthModule,
   ],
   providers: [GlobalExceptionFilter, ResponseEnvelopeInterceptor],

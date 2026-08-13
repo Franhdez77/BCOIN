@@ -63,6 +63,44 @@ expects a wallet after registration, creating an unledgered placeholder would vi
 economic invariants. Sprint 2 owns the wallet/ledger migration, backfill for existing users, and
 atomic wallet creation for future registrations.
 
+## Sprint 2 user/wallet schema
+
+Sprint 2 introduces migration `20260813020000_sprint_2_user_wallet_ledger`.
+
+`Wallet` is a one-to-one extension of `User` backed by a unique `wallets.userId` constraint. Its
+authoritative BIC balance is `BIGINT`, with one stored integer unit equal to one whole BIC for the
+MVP. `wallets.balance >= 0` is enforced by PostgreSQL.
+
+`WalletTransaction` records every non-zero economic movement with:
+
+- signed `BIGINT amount`;
+- `balanceBefore` and `balanceAfter`;
+- `CREDIT`, `DEBIT`, or `ADJUSTMENT` type;
+- optional reference type/id pair;
+- a required globally unique idempotency key;
+- optional internal actor/request/reason/metadata fields;
+- UTC creation timestamp.
+
+Database checks enforce `balanceAfter = balanceBefore + amount`, non-negative before/after
+balances, valid amount direction for transaction type, and all-or-nothing reference pairs.
+Reference type/id is unique when populated so one source event cannot be credited twice through a
+different idempotency key.
+
+The migration backfills every Sprint 1 user with exactly one zero-balance wallet using an
+`INSERT ... SELECT ... ON CONFLICT ("userId") DO NOTHING`. Creating a wallet at zero is not an
+economic movement and therefore does not create a synthetic ledger entry.
+
+New registrations create User + Wallet inside the existing serializable registration transaction.
+Failure of wallet provisioning rolls the whole registration back.
+
+The ledger is database-immutable: PostgreSQL triggers reject row-level `UPDATE` and `DELETE`.
+Corrections must be represented by compensating entries. Wallet rows and ledger rows use
+`ON DELETE RESTRICT` toward their economic owners so account deletion cannot silently erase
+history.
+
+Transaction history uses the composite access path `(walletId, createdAt DESC, id DESC)`.
+Idempotency and the source reference tuple have unique indexes.
+
 ## Target entities
 
 ### User

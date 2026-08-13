@@ -5,6 +5,7 @@ import { ApiHttpException } from '../../common/errors/api-http.exception';
 import type { EnvironmentVariables } from '../../config/environment';
 import { SecurityEventType } from '../../generated/prisma/enums';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
+import { UserProvisioningService } from '../../users/application/user-provisioning.service';
 import { invalidVerification, passwordRejected } from '../domain/auth-errors';
 import type { RequestMetadata } from '../presentation/request-metadata';
 import { EMAIL_SENDER, type EmailSender } from './email-sender.port';
@@ -19,6 +20,7 @@ export class AccountVerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transactions: AuthTransactionService,
+    private readonly userProvisioning: UserProvisioningService,
     private readonly passwords: PasswordHasher,
     private readonly tokens: TokenCryptoService,
     private readonly config: ConfigService<EnvironmentVariables, true>,
@@ -47,14 +49,12 @@ export class AccountVerificationService {
 
     try {
       await this.transactions.run(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            email: email.display,
-            emailNormalized: email.normalized,
-            username: username.display,
-            usernameNormalized: username.normalized,
-            passwordHash,
-          },
+        const user = await this.userProvisioning.create(tx, {
+          email: email.display,
+          emailNormalized: email.normalized,
+          username: username.display,
+          usernameNormalized: username.normalized,
+          passwordHash,
         });
         await tx.emailVerificationToken.create({
           data: { id: token.id, userId: user.id, tokenHash: token.hash, expiresAt },

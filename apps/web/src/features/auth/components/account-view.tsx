@@ -1,10 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+
+import { usersApi } from '@/features/users/users-api';
+import type { UserProfile } from '@/features/users/contracts';
+import { walletApi } from '@/features/wallet/wallet-api';
+import type { WalletSummary, WalletTransactionPage } from '@/features/wallet/contracts';
 
 import { authApi } from '../auth-api';
-import type { AuthSession, AuthUser } from '../contracts';
+import type { AuthSession } from '../contracts';
 import { getSafeErrorMessage, isExpiredSessionError } from '../messages';
 import { navigateTo } from '../navigation';
 
@@ -13,12 +18,15 @@ interface AccountViewProps {
 }
 
 interface AccountData {
+  profile: UserProfile;
   sessions: AuthSession[];
-  user: AuthUser;
+  wallet: WalletSummary;
+  history: WalletTransactionPage;
 }
 
 export function AccountView({ navigate = navigateTo }: AccountViewProps) {
   const [data, setData] = useState<AccountData>();
+  const [usernameDraft, setUsernameDraft] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [requestId, setRequestId] = useState<string>();
   const [pendingAction, setPendingAction] = useState<string>();
@@ -27,11 +35,19 @@ export function AccountView({ navigate = navigateTo }: AccountViewProps) {
   const loadAccount = useCallback(
     async (signal?: AbortSignal) => {
       try {
-        const [meResult, sessionsResult] = await Promise.all([
-          authApi.me(signal),
+        const [profileResult, sessionsResult, walletResult, historyResult] = await Promise.all([
+          usersApi.me(signal),
           authApi.sessions(signal),
+          walletApi.wallet(signal),
+          walletApi.transactions(undefined, signal),
         ]);
-        setData({ sessions: sessionsResult.sessions, user: meResult.user });
+        setUsernameDraft(profileResult.user.username);
+        setData({
+          profile: profileResult.user,
+          sessions: sessionsResult.sessions,
+          wallet: walletResult.wallet,
+          history: historyResult,
+        });
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return;
@@ -89,6 +105,42 @@ export function AccountView({ navigate = navigateTo }: AccountViewProps) {
       actionLocked.current = false;
       setPendingAction(undefined);
     }
+  }
+
+  function submitProfile(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const username = usernameDraft.trim();
+    if (username.length < 3 || username.length > 32 || !/^[A-Za-z0-9_]+$/u.test(username)) {
+      setErrorMessage('Use 3-32 letters, numbers, or underscores for your username.');
+      return;
+    }
+
+    void runAction('profile', async () => {
+      const result = await usersApi.updateProfile({ username });
+      setUsernameDraft(result.user.username);
+      setData((current) =>
+        current === undefined ? current : { ...current, profile: result.user },
+      );
+    });
+  }
+
+  function loadMoreTransactions(): void {
+    if (data?.history.nextCursor === undefined) return;
+
+    void runAction('transactions', async () => {
+      const page = await walletApi.transactions(data.history.nextCursor);
+      setData((current) =>
+        current === undefined
+          ? current
+          : {
+              ...current,
+              history: {
+                transactions: [...current.history.transactions, ...page.transactions],
+                nextCursor: page.nextCursor,
+              },
+            },
+      );
+    });
   }
 
   function revokeSession(session: AuthSession): void {
@@ -156,7 +208,7 @@ export function AccountView({ navigate = navigateTo }: AccountViewProps) {
             BichoCoin
           </Link>
           <h1 className="account-title">Your account</h1>
-          <p className="account-subtitle">Signed in as {data.user.username}</p>
+          <p className="account-subtitle">Signed in as {data.profile.username}</p>
         </div>
         <button
           className="secondary-button"
@@ -176,25 +228,86 @@ export function AccountView({ navigate = navigateTo }: AccountViewProps) {
       ) : null}
 
       <section aria-labelledby="profile-title" className="account-panel">
-        <h2 id="profile-title">Profile</h2>
+        <div className="panel-heading">
+          <div>
+            <h2 id="profile-title">Profile</h2>
+            <p>Email changes remain disabled until a reverification flow is designed.</p>
+          </div>
+        </div>
         <dl className="detail-grid">
           <div>
-            <dt>Username</dt>
-            <dd>{data.user.username}</dd>
-          </div>
-          <div>
             <dt>Email</dt>
-            <dd>{data.user.email}</dd>
+            <dd>{data.profile.email}</dd>
           </div>
           <div>
             <dt>Email status</dt>
-            <dd>{data.user.emailVerified ? 'Verified' : 'Verification required'}</dd>
+            <dd>{data.profile.emailVerified ? 'Verified' : 'Verification required'}</dd>
           </div>
           <div>
             <dt>Account status</dt>
-            <dd>{data.user.status}</dd>
+            <dd>{data.profile.status}</dd>
           </div>
         </dl>
+        <form className="inline-form" onSubmit={submitProfile}>
+          <label className="field-label" htmlFor="profile-username">
+            Username
+          </label>
+          <input
+            autoComplete="username"
+            className="text-input"
+            disabled={pendingAction !== undefined}
+            id="profile-username"
+            maxLength={32}
+            minLength={3}
+            onChange={(event) => setUsernameDraft(event.target.value)}
+            pattern="[A-Za-z0-9_]+"
+            required
+            value={usernameDraft}
+          />
+          <button className="primary-button" disabled={pendingAction !== undefined} type="submit">
+            {pendingAction === 'profile' ? 'Saving...' : 'Save username'}
+          </button>
+        </form>
+      </section>
+
+      <section aria-labelledby="wallet-title" className="account-panel">
+        <div className="panel-heading">
+          <div>
+            <h2 id="wallet-title">BIC wallet</h2>
+            <p>The backend is the authority for this balance and transaction history.</p>
+          </div>
+          <strong className="wallet-balance">{data.wallet.balance} BIC</strong>
+        </div>
+
+        {data.history.transactions.length === 0 ? (
+          <p className="empty-state">No BIC transactions yet.</p>
+        ) : (
+          <ul className="transaction-list">
+            {data.history.transactions.map((transaction) => (
+              <li className="transaction-item" key={transaction.id}>
+                <div>
+                  <p className="session-name">{transaction.type}</p>
+                  <p>{new Date(transaction.createdAt).toLocaleString()}</p>
+                </div>
+                <div className="transaction-amount">
+                  <strong>{transaction.amount} BIC</strong>
+                  <small>Balance: {transaction.balanceAfter} BIC</small>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {data.history.nextCursor ? (
+          <button
+            className="secondary-button"
+            disabled={pendingAction !== undefined}
+            onClick={loadMoreTransactions}
+            type="button"
+          >
+            {pendingAction === 'transactions' ? 'Loading...' : 'Load more transactions'}
+          </button>
+        ) : null}
       </section>
 
       <section aria-labelledby="sessions-title" className="account-panel">

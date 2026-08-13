@@ -19,6 +19,8 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   REGISTRATION_CONFLICT: 'An account with those details cannot be created.',
   SESSION_INVALID: 'Your session has expired. Please sign in again.',
   TOO_MANY_REQUESTS: 'Too many attempts. Please wait before trying again.',
+  USERNAME_UNAVAILABLE: 'That username is already in use.',
+  WALLET_CURSOR_INVALID: 'The transaction page could not be loaded. Refresh and try again.',
   UNAUTHORIZED: 'Your session has expired. Please sign in again.',
 };
 

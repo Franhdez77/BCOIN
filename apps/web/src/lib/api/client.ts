@@ -1,4 +1,5 @@
-const AUTH_API_PREFIX = '/api/v1/auth';
+const API_PREFIX = '/api/v1';
+const AUTH_API_PREFIX = '/auth';
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 interface ApiSuccessEnvelope<T> {
@@ -48,12 +49,12 @@ function getApiBaseUrl(): string {
   return configuredValue;
 }
 
-function buildAuthUrl(path: string): string {
+function buildApiUrl(path: string): string {
   if (!path.startsWith('/') || path.startsWith('//')) {
     throw new ApiClientError('API_PATH_INVALID', 0);
   }
 
-  return new URL(`${AUTH_API_PREFIX}${path}`, getApiBaseUrl()).toString();
+  return new URL(`${API_PREFIX}${path}`, getApiBaseUrl()).toString();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -131,7 +132,7 @@ async function sendRequest<T>(path: string, options: ApiRequestOptions): Promise
   let response: Response;
 
   try {
-    response = await fetch(buildAuthUrl(path), {
+    response = await fetch(buildApiUrl(path), {
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       cache: 'no-store',
       credentials: 'include',
@@ -156,7 +157,7 @@ async function ensureCsrfToken(): Promise<void> {
   }
 
   if (csrfBootstrapPromise === undefined) {
-    csrfBootstrapPromise = sendRequest<{ csrfToken: string }>('/csrf', {
+    csrfBootstrapPromise = sendRequest<{ csrfToken: string }>(`${AUTH_API_PREFIX}/csrf`, {
       method: 'GET',
       retryOnUnauthorized: false,
     })
@@ -196,7 +197,7 @@ async function sendWithCsrfRecovery<T>(path: string, options: ApiRequestOptions)
 
 async function refreshSession(): Promise<void> {
   if (refreshPromise === undefined) {
-    refreshPromise = sendWithCsrfRecovery<unknown>('/refresh', {
+    refreshPromise = sendWithCsrfRecovery<unknown>(`${AUTH_API_PREFIX}/refresh`, {
       method: 'POST',
       retryOnUnauthorized: false,
     })
@@ -213,7 +214,7 @@ async function refreshSession(): Promise<void> {
   return refreshPromise;
 }
 
-export async function authApiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const retryOnUnauthorized = options.retryOnUnauthorized ?? true;
 
   try {
@@ -226,6 +227,16 @@ export async function authApiRequest<T>(path: string, options: ApiRequestOptions
     await refreshSession();
     return sendWithCsrfRecovery<T>(path, { ...options, retryOnUnauthorized: false });
   }
+}
+
+export function authApiRequest<T>(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  if (!path.startsWith('/') || path.startsWith('//')) {
+    return Promise.reject(new ApiClientError('API_PATH_INVALID', 0));
+  }
+  return apiRequest<T>(`${AUTH_API_PREFIX}${path}`, options);
 }
 
 export function clearAuthenticationClientState(): void {

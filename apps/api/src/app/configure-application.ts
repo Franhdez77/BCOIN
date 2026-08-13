@@ -32,7 +32,7 @@ export function configureApplication(app: NestExpressApplication): void {
   );
   app.use(httpLoggingMiddleware);
   app.use(cookieParser());
-  app.use('/api/v1/auth', (_request: Request, response: Response, next: NextFunction) => {
+  app.use('/api/v1', (_request: Request, response: Response, next: NextFunction) => {
     response.setHeader('Cache-Control', 'no-store');
     next();
   });

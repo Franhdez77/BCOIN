@@ -6,10 +6,11 @@ ecosystem. The MVP will validate this core loop:
 `Register -> Mine BIC -> Play Quiz -> Earn Score -> Rank -> Earn Rewards`
 
 Sprint 0 established the web/API runtime, PostgreSQL/Prisma connectivity, health checks, security
-defaults, tests, and CI. Sprint 1 adds authentication and account recovery. Wallet creation is
-deliberately deferred to Sprint 2 so the first balance is created atomically with the immutable
-ledger rather than through a temporary balance implementation. Mining, games, rankings, rewards,
-and administration remain future work.
+defaults, tests, and CI. Sprint 1 adds authentication and account recovery. Sprint 2 adds the
+authenticated user/profile boundary plus one internal BIC wallet per user and an immutable,
+database-backed ledger. Sprint 1 users are backfilled with zero-balance wallets, while new
+registrations provision User + Wallet inside the same serializable transaction. Mining, games,
+rankings, rewards, and administration remain future work.
 
 ## Architecture
 
@@ -186,11 +187,12 @@ npm run test:database --workspace=apps/api
 
 ## MVP scope
 
-See [docs/API.md](docs/API.md) for the exact Sprint 1 authentication routes and
-[docs/SECURITY.md](docs/SECURITY.md) for cookie, CSRF, rotation, and recovery rules. Planned later
-sprints include user profiles, the internal BIC wallet and immutable ledger, 24-hour mining
-sessions, the football quiz, leaderboards, rewards, administration, and broader audit tooling. A
-real blockchain/token, crypto transfers, betting, mobile apps, and speculative distributed
-infrastructure remain out of scope.
+See [docs/API.md](docs/API.md) for the implemented authentication, profile, wallet, and transaction
+history routes and [docs/SECURITY.md](docs/SECURITY.md) for cookie, CSRF, rotation, recovery, and
+economic-integrity rules. Planned later sprints include 24-hour mining sessions, the football
+quiz, leaderboards, rewards, administration, and broader audit tooling. A real blockchain/token,
+crypto transfers, betting, mobile apps, and speculative distributed infrastructure remain out of
+scope.
 
-Read `AGENTS.md` and `CODEX_FIRST_TASK.md` before changing the implementation.
+Read `AGENTS.md` before changing the implementation. `CODEX_FIRST_TASK.md` is retained as
+historical Sprint 0 context and is not the active task specification.
