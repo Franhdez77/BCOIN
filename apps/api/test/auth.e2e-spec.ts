@@ -203,10 +203,8 @@ describe('authentication HTTP contract', () => {
 
   it('enforces the login IP rate limit through HTTP with retry headers', async () => {
     const config = app.get(ConfigService<EnvironmentVariables, true>);
-    const limiter = app.get(TargetedRateLimitGuard) as unknown as {
-      buckets: Map<string, unknown>;
-    };
-    limiter.buckets.clear();
+    const limiter = app.get(TargetedRateLimitGuard);
+    limiter['buckets'].clear();
     config.set('AUTH_LOGIN_RATE_LIMIT_MAX', 2);
     try {
       for (const identifier of ['first@example.com', 'second@example.com']) {
@@ -232,7 +230,7 @@ describe('authentication HTTP contract', () => {
       expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
     } finally {
       config.set('AUTH_LOGIN_RATE_LIMIT_MAX', 1000);
-      limiter.buckets.clear();
+      limiter['buckets'].clear();
     }
   });
 });
