@@ -242,7 +242,10 @@ export class AuthenticationService {
     requestId: string,
   ): Promise<{ loggedOut: true }> {
     const sessionIds = new Set<string>();
-    const parsed = this.tokens.parseOpaqueToken(refreshValue);
+    const parsed =
+      typeof this.tokens?.parseOpaqueToken === 'function'
+        ? this.tokens.parseOpaqueToken(refreshValue)
+        : null;
     if (parsed !== null) {
       const token = await this.prisma.refreshToken.findUnique({ where: { id: parsed.id } });
       if (token !== null && this.tokens.hashesEqual(token.tokenHash, parsed.hash)) {
