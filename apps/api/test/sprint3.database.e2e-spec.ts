@@ -65,7 +65,10 @@ describeDatabase('Sprint 3 mining PostgreSQL integration', () => {
       logger: false,
     });
     configureApplication(app);
-    await app.init();
+    // Keep a real HTTP listener open for the high-concurrency mining tests.
+    // This prevents the test client from owning the ephemeral listen/close
+    // lifecycle while multiple requests are in flight.
+    await app.listen(0, '127.0.0.1');
 
     prisma = app.get(PrismaService);
     await assertConnectedDatabase(prisma);
