@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { getSafeErrorMessage, isExpiredSessionError } from '@/features/auth/messages';
 import { navigateTo } from '@/features/auth/navigation';
@@ -23,18 +23,20 @@ export function MiningPanel({ navigate = navigateTo, onBalanceChanged }: MiningP
   const [lastClaimBalance, setLastClaimBalance] = useState<string>();
   const actionLocked = useRef(false);
 
-  const loadMining = useCallback(
-    async (signal?: AbortSignal) => {
-      try {
-        const [currentResult, historyResult] = await Promise.all([
-          miningApi.current(signal),
-          miningApi.history(undefined, signal),
-        ]);
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void Promise.all([
+      miningApi.current(controller.signal),
+      miningApi.history(undefined, controller.signal),
+    ])
+      .then(([currentResult, historyResult]) => {
         setCurrent(currentResult.session);
         setHistory(historyResult);
         setErrorMessage('');
         setRequestId(undefined);
-      } catch (error: unknown) {
+      })
+      .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === 'AbortError') return;
         if (isExpiredSessionError(error)) {
           navigate('/login?next=%2Fmining');
@@ -43,16 +45,10 @@ export function MiningPanel({ navigate = navigateTo, onBalanceChanged }: MiningP
         const safeError = getSafeErrorMessage(error, 'Mining data could not be loaded.');
         setErrorMessage(safeError.message);
         setRequestId(safeError.requestId);
-      }
-    },
-    [navigate],
-  );
+      });
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void loadMining(controller.signal);
     return () => controller.abort();
-  }, [loadMining]);
+  }, [navigate]);
 
   useEffect(() => {
     if (current === null || current === undefined) return;
