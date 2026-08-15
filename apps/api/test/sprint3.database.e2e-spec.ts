@@ -173,9 +173,8 @@ describeDatabase('Sprint 3 mining PostgreSQL integration', () => {
     await registerVerifyAndLogin('owner-mining@example.com', 'OwnerMining', owner);
     let csrf = await issueCsrf(owner);
     const ownerStart = await postMiningStart(owner, csrf).expect(201);
-    const ownerSession = (
-      ownerStart.body as SuccessBody<{ session: MiningSessionResponse }>
-    ).data.session;
+    const ownerSession = (ownerStart.body as SuccessBody<{ session: MiningSessionResponse }>).data
+      .session;
     const ownerUser = await userByEmail('owner-mining@example.com');
 
     const attacker = request.agent(app.getHttpServer());

@@ -58,9 +58,7 @@ export function MiningPanel({ navigate = navigateTo, onBalanceChanged }: MiningP
 
   const countdown = useMemo(
     () =>
-      current === null || current === undefined
-        ? undefined
-        : formatCountdown(current.endsAt, now),
+      current === null || current === undefined ? undefined : formatCountdown(current.endsAt, now),
     [current, now],
   );
 
@@ -255,10 +253,7 @@ export function MiningPanel({ navigate = navigateTo, onBalanceChanged }: MiningP
 }
 
 function formatCountdown(endsAt: string, now: number): string {
-  const remainingSeconds = Math.max(
-    0,
-    Math.ceil((new Date(endsAt).getTime() - now) / 1_000),
-  );
+  const remainingSeconds = Math.max(0, Math.ceil((new Date(endsAt).getTime() - now) / 1_000));
   const hours = Math.floor(remainingSeconds / 3_600);
   const minutes = Math.floor((remainingSeconds % 3_600) / 60);
   const seconds = remainingSeconds % 60;

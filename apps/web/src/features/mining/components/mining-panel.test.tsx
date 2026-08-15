@@ -76,9 +76,7 @@ describe('MiningPanel', () => {
     vi.mocked(miningApi.history)
       .mockResolvedValueOnce({ sessions: [ELIGIBLE_SESSION] })
       .mockResolvedValueOnce({
-        sessions: [
-          { ...ELIGIBLE_SESSION, claimedAt: '2026-08-15T00:00:01.000Z', eligible: false },
-        ],
+        sessions: [{ ...ELIGIBLE_SESSION, claimedAt: '2026-08-15T00:00:01.000Z', eligible: false }],
       });
 
     render(<MiningPanel onBalanceChanged={onBalanceChanged} />);
