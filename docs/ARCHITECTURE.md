@@ -122,6 +122,23 @@ Idempotency is additionally enforced by unique database keys. The web layer rece
 decimal strings, treats them as display state only, and never persists an authoritative balance in
 browser storage.
 
+## Sprint 3 mining slice
+
+Sprint 3 adds an isolated `mining` module with thin HTTP presentation, a command-side
+`MiningApplicationService`, and a query-side `MiningQueryService`. PostgreSQL stores one open
+session (`claimedAt IS NULL`) per user through a partial unique index. Session duration and reward
+come from validated backend configuration; `rewardAmount` is snapshotted when the session starts.
+
+A claim owns the outer serializable transaction. It conditionally transitions the session to
+claimed and calls `WalletApplicationService.recordMovementInTransaction` using that same Prisma
+transaction. The wallet service remains the only balance-mutation boundary; Mining never updates
+`wallet.balance` or inserts a ledger row directly. Deterministic idempotency plus the unique
+`MINING` source reference form an independent database backstop against replay/double credit.
+
+The web integration lives at `/mining`. Its countdown is display-only and never enables a claim on
+client time alone; eligibility is refreshed from the API. All public ownership comes from the live
+authenticated principal.
+
 ## HTTP foundation
 
 Future public API controllers live under `/api/v1`. Operational health routes remain outside that

@@ -73,6 +73,7 @@ model User {
   securityEvents          SecurityEvent[]
   wallet                  Wallet?
   walletTransactionsAsActor WalletTransaction[] @relation("WalletTransactionActor")
+  miningSessions          MiningSession[]
 
   @@map("users")
 }
@@ -113,6 +114,22 @@ model WalletTransaction {
   @@index([walletId, createdAt, id], map: "wallet_transactions_history_idx")
   @@index([actorUserId, createdAt], map: "wallet_transactions_actor_idx")
   @@map("wallet_transactions")
+}
+
+model MiningSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  startedAt    DateTime  @db.Timestamptz(3)
+  endsAt       DateTime  @db.Timestamptz(3)
+  claimedAt    DateTime? @db.Timestamptz(3)
+  rewardAmount BigInt
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId], map: "mining_sessions_one_open_per_user_key", where: { claimedAt: null })
+  @@index([userId, createdAt, id], map: "mining_sessions_history_idx")
+  @@map("mining_sessions")
 }
 
 model AuthSession {

@@ -44,6 +44,8 @@ jobs:
       JWT_AUDIENCE: bichocoin-web
       JWT_ISSUER: bichocoin-api
       JWT_SIGNING_SECRET: ci-only-jwt-signing-secret-0000000000000000000000000000000
+      MINING_DURATION_SECONDS: '86400'
+      MINING_REWARD_BIC: '100'
       NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
       OPENAPI_ENABLED: 'false'
       PASSWORD_RESET_TTL_SECONDS: '3600'

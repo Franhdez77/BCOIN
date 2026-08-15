@@ -111,10 +111,35 @@ No user endpoint exists to directly add/set/subtract balance.
 
 ## Mining
 
-- `POST /mining/start`
-- `GET /mining/current`
-- `POST /mining/claim`
-- `GET /mining/history?cursor=&limit=`
+Sprint 3 implements the following authenticated routes under `/api/v1`:
+
+- `POST /mining/start` accepts no client-owned mining/economic fields. It creates one server-timed
+  open session when none exists and returns HTTP `201`.
+- `GET /mining/current` returns `{ "session": null }` when no open session exists, otherwise the
+  authoritative open session.
+- `POST /mining/claim` accepts no client-owned mining/economic fields. It returns HTTP `200` only
+  after the backend determines that the session is eligible.
+- `GET /mining/history?cursor=&limit=` returns newest-first user-owned sessions. `limit` defaults to
+  20 and is capped at 50.
+
+A public mining session contains `id`, `startedAt`, `endsAt`, nullable `claimedAt`, decimal-string
+`rewardAmount`, server-derived `eligible`, and `createdAt`. It never exposes or accepts `userId` as
+an ownership selector. The frontend countdown is informational; only the backend `eligible` value
+and claim operation are authoritative.
+
+Current policy is configured by `MINING_DURATION_SECONDS=86400` and `MINING_REWARD_BIC=100`. The
+reward is snapshotted into each session at start, so later configuration changes affect only new
+sessions.
+
+An open session means `claimedAt IS NULL`. A completed-but-unclaimed session therefore blocks a
+new start until it is claimed. Claim uses the stored reward and credits the wallet through
+`WalletApplicationService` in the same serializable transaction that records `claimedAt`. The
+ledger reference is `referenceType=MINING`, `referenceId=<miningSessionId>`, with deterministic
+idempotency key `mining:claim:<miningSessionId>`.
+
+Stable mining errors include `MINING_ALREADY_ACTIVE`, `MINING_SESSION_NOT_FOUND`,
+`MINING_NOT_ELIGIBLE`, `MINING_ALREADY_CLAIMED`, and `MINING_CURSOR_INVALID`. Unexpected Prisma or
+SQL details are never returned to clients.
 
 ## Games
 

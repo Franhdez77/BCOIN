@@ -34,9 +34,34 @@ describe('validateEnvironment', () => {
       REFRESH_TOKEN_TTL_SECONDS: 2_592_000,
       EMAIL_VERIFICATION_TTL_SECONDS: 86_400,
       PASSWORD_RESET_TTL_SECONDS: 3_600,
+      MINING_DURATION_SECONDS: 86_400,
+      MINING_REWARD_BIC: 100n,
       COOKIE_SECURE: false,
       AUTH_LOGIN_RATE_LIMIT_MAX: 10,
     });
+  });
+
+  it('parses explicit mining policy values and rejects invalid ones', () => {
+    expect(
+      validateEnvironment({
+        ...VALID_ENVIRONMENT,
+        MINING_DURATION_SECONDS: '3600',
+        MINING_REWARD_BIC: '250',
+      }),
+    ).toMatchObject({ MINING_DURATION_SECONDS: 3600, MINING_REWARD_BIC: 250n });
+
+    expect(() =>
+      validateEnvironment({ ...VALID_ENVIRONMENT, MINING_DURATION_SECONDS: '0' }),
+    ).toThrow('MINING_DURATION_SECONDS must be a positive integer');
+    expect(() => validateEnvironment({ ...VALID_ENVIRONMENT, MINING_REWARD_BIC: '0' })).toThrow(
+      'MINING_REWARD_BIC must fit in a positive PostgreSQL BIGINT.',
+    );
+    expect(() =>
+      validateEnvironment({
+        ...VALID_ENVIRONMENT,
+        MINING_REWARD_BIC: '9223372036854775808',
+      }),
+    ).toThrow('MINING_REWARD_BIC must fit in a positive PostgreSQL BIGINT.');
   });
 
   it('fails clearly when DATABASE_URL is missing', () => {

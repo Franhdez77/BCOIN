@@ -15,6 +15,12 @@ The MVP is not the cryptocurrency itself. `BIC` in this version is an internal a
 7. Eligible ranking positions receive configured rewards.
 8. All BIC movements are recorded in an immutable ledger.
 
+Sprint 3 mining policy is 24 hours (`MINING_DURATION_SECONDS=86400`) and 100 whole BIC
+(`MINING_REWARD_BIC=100`) per session. These are backend-owned configuration values. A session
+stores the reward in force when it starts; changing policy later does not retroactively alter
+existing sessions. An expired session remains open until claimed, so a user cannot stockpile
+multiple unclaimed sessions.
+
 ## Actors
 ### User
 Can register, sign in, view profile, mine, claim, play, view rankings, and receive eligible rewards.
@@ -67,16 +73,20 @@ As a user, I want to view my current internal BIC balance.
 As a user, I want to view paginated BIC ledger entries associated with my wallet.
 
 ### US-008 Start mining
-As a user, I want to start one 24-hour mining session if I have no active session.
+As a user, I want to start one 24-hour mining session if I have no open session. Start time,
+duration, end time, and reward are server-authored; an eligible-but-unclaimed session still counts
+as open.
 
 ### US-009 View mining status
-As a user, I want to view authoritative server mining state, start/end times, and reward eligibility.
+As a user, I want to view authoritative server mining state, start/end times, configured reward
+snapshot, and reward eligibility. The web countdown is informational only.
 
 ### US-010 Claim mining reward
-As a user, I want to claim an eligible reward exactly once.
+As a user, I want to claim an eligible reward exactly once. The claim must atomically mark the
+session claimed and issue one immutable wallet-ledger credit.
 
 ### US-011 Mining history
-As a user, I want to view previous mining sessions.
+As a user, I want to view my previous mining sessions using bounded newest-first cursor pagination.
 
 ### US-012 Game catalog
 As a user, I want to see enabled games. MVP exposes Football Quiz only.

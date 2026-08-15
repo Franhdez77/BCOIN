@@ -47,55 +47,9 @@ export class WalletApplicationService {
     validateMovement(input);
 
     try {
-      return await runSerializableTransaction(this.prisma, async (transaction) => {
-        const existing = await transaction.walletTransaction.findUnique({
-          where: { idempotencyKey: input.idempotencyKey },
-          include: { wallet: { select: { userId: true } } },
-        });
-
-        if (existing !== null) {
-          return this.resolveExisting(existing, input);
-        }
-
-        const wallet = await transaction.wallet.findUnique({
-          where: { userId: input.userId },
-          select: { id: true, balance: true },
-        });
-        if (wallet === null) throw walletNotFound();
-
-        const balanceAfter = wallet.balance + input.amount;
-        if (balanceAfter < 0n) throw insufficientBalance();
-
-        await transaction.wallet.update({
-          where: { id: wallet.id },
-          data: { balance: balanceAfter },
-        });
-
-        const ledger = await transaction.walletTransaction.create({
-          data: {
-            walletId: wallet.id,
-            type: input.type,
-            amount: input.amount,
-            balanceBefore: wallet.balance,
-            balanceAfter,
-            referenceType: input.referenceType,
-            referenceId: input.referenceId,
-            idempotencyKey: input.idempotencyKey,
-            actorUserId: input.actorUserId,
-            requestId: input.requestId,
-            reason: input.reason,
-            metadata: input.metadata,
-          },
-          select: { id: true },
-        });
-
-        return {
-          transactionId: ledger.id,
-          balanceBefore: wallet.balance,
-          balanceAfter,
-          amount: input.amount,
-        };
-      });
+      return await runSerializableTransaction(this.prisma, (transaction) =>
+        this.recordMovementInTransaction(transaction, input),
+      );
     } catch (error: unknown) {
       if (!isPrismaCode(error, 'P2002')) throw error;
 
@@ -106,6 +60,61 @@ export class WalletApplicationService {
       if (existing === null) throw error;
       return this.resolveExisting(existing, input);
     }
+  }
+
+  async recordMovementInTransaction(
+    transaction: Prisma.TransactionClient,
+    input: WalletMovementInput,
+  ): Promise<WalletMovementResult> {
+    validateMovement(input);
+
+    const existing = await transaction.walletTransaction.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+      include: { wallet: { select: { userId: true } } },
+    });
+
+    if (existing !== null) {
+      return this.resolveExisting(existing, input);
+    }
+
+    const wallet = await transaction.wallet.findUnique({
+      where: { userId: input.userId },
+      select: { id: true, balance: true },
+    });
+    if (wallet === null) throw walletNotFound();
+
+    const balanceAfter = wallet.balance + input.amount;
+    if (balanceAfter < 0n) throw insufficientBalance();
+
+    await transaction.wallet.update({
+      where: { id: wallet.id },
+      data: { balance: balanceAfter },
+    });
+
+    const ledger = await transaction.walletTransaction.create({
+      data: {
+        walletId: wallet.id,
+        type: input.type,
+        amount: input.amount,
+        balanceBefore: wallet.balance,
+        balanceAfter,
+        referenceType: input.referenceType,
+        referenceId: input.referenceId,
+        idempotencyKey: input.idempotencyKey,
+        actorUserId: input.actorUserId,
+        requestId: input.requestId,
+        reason: input.reason,
+        metadata: input.metadata,
+      },
+      select: { id: true },
+    });
+
+    return {
+      transactionId: ledger.id,
+      balanceBefore: wallet.balance,
+      balanceAfter,
+      amount: input.amount,
+    };
   }
 
   private resolveExisting(

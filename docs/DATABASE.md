@@ -101,6 +101,24 @@ history.
 Transaction history uses the composite access path `(walletId, createdAt DESC, id DESC)`.
 Idempotency and the source reference tuple have unique indexes.
 
+## Sprint 3 mining schema
+
+Sprint 3 adds migration `20260815003000_sprint_3_mining` and the `MiningSession` model with UUID
+`id`, owner `userId`, server-authored `startedAt`/`endsAt`, nullable `claimedAt`, `BIGINT`
+`rewardAmount`, and UTC `createdAt`. No redundant status column is stored; claimability is derived
+from `claimedAt`, `endsAt`, and server time.
+
+PostgreSQL checks require a positive reward, `endsAt > startedAt`, and any `claimedAt` to be at or
+after `endsAt`. A partial unique index on `userId WHERE claimedAt IS NULL` is the database backstop
+for one open session per user. Because an expired but unclaimed row remains open, users cannot
+accumulate multiple unclaimed mining rewards. The history index is
+`(userId, createdAt DESC, id DESC)` and the user foreign key uses `ON DELETE RESTRICT`.
+
+`rewardAmount` is a per-session snapshot of the backend configuration. Claim writes no mining
+amount supplied by the client. The economic linkage is traceable through the existing unique
+wallet-ledger source reference (`MINING`, mining session UUID) and deterministic idempotency key;
+no mutable direct balance column exists on `MiningSession`.
+
 ## Target entities
 
 ### User
@@ -150,14 +168,15 @@ Idempotency and the source reference tuple have unique indexes.
 
 - id
 - userId
-- status
 - startedAt
-- expiresAt
+- endsAt
 - rewardAmount
-- claimedAt
+- claimedAt nullable
 - createdAt
 
-Enforce one active mining session per user using the strongest practical database/application combination. Claim uniqueness must be database-backed.
+Sprint 3 implements this without a persisted status field. The partial unique open-session index,
+claim-time checks, and unique wallet-ledger reference provide the database-backed concurrency and
+claim uniqueness guarantees.
 
 ### Game
 

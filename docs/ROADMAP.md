@@ -35,9 +35,14 @@ Economic gate: no direct balance mutation outside wallet domain; database invari
 idempotency, BOLA/mass-assignment, immutable-history, and atomic transaction tests pass.
 
 ## Sprint 3 — Mining
-Start/current/claim/history, 24-hour policy, one active session, atomic/idempotent claim, concurrency tests.
+Start/current/claim/history with backend-authoritative 24-hour sessions, explicit 100 BIC configured
+reward, per-session reward snapshots, one open session per user, bounded cursor history, and the
+minimal `/mining` frontend flow. Claim is atomic with the Sprint 2 wallet ledger and uses a
+deterministic source/idempotency identity.
 
-Economic gate: parallel claims issue exactly one reward.
+Economic gate: database-backed concurrent starts create one open session; replayed or parallel
+claims issue exactly one 100 BIC credit and one `MINING` ledger transaction, with rollback if the
+wallet movement fails.
 
 ## Sprint 4 — Game Core
 Game catalog, generic game-session lifecycle/contracts, extension points for independent game modules.

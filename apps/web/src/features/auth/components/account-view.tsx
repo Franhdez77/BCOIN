@@ -275,6 +275,7 @@ export function AccountView({ navigate = navigateTo }: AccountViewProps) {
           <div>
             <h2 id="wallet-title">BIC wallet</h2>
             <p>The backend is the authority for this balance and transaction history.</p>
+            <Link href="/mining">Open mining</Link>
           </div>
           <strong className="wallet-balance">{data.wallet.balance} BIC</strong>
         </div>

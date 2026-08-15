@@ -14,6 +14,8 @@ export interface EnvironmentVariables {
   REFRESH_TOKEN_TTL_SECONDS: number;
   EMAIL_VERIFICATION_TTL_SECONDS: number;
   PASSWORD_RESET_TTL_SECONDS: number;
+  MINING_DURATION_SECONDS: number;
+  MINING_REWARD_BIC: bigint;
   CSRF_HMAC_SECRET: string;
   RATE_LIMIT_HMAC_SECRET: string;
   AUTH_ACCESS_COOKIE_NAME: string;
@@ -48,6 +50,7 @@ export const REQUEST_BODY_LIMIT_BYTES = 100 * 1024;
 const DEFAULT_API_PORT = 3001;
 const LOCAL_WEB_ORIGIN = 'http://localhost:3000';
 const MINIMUM_SECRET_BYTES = 32;
+const POSTGRES_BIGINT_MAX = 9_223_372_036_854_775_807n;
 
 const DEFAULTS = {
   JWT_ISSUER: 'bichocoin-api',
@@ -56,6 +59,8 @@ const DEFAULTS = {
   REFRESH_TOKEN_TTL_SECONDS: 2_592_000,
   EMAIL_VERIFICATION_TTL_SECONDS: 86_400,
   PASSWORD_RESET_TTL_SECONDS: 3_600,
+  MINING_DURATION_SECONDS: 86_400,
+  MINING_REWARD_BIC: '100',
   AUTH_ACCESS_COOKIE_NAME: 'bichocoin_access',
   AUTH_REFRESH_COOKIE_NAME: 'bichocoin_refresh',
   AUTH_CSRF_COOKIE_NAME: 'bichocoin_csrf',
@@ -167,6 +172,17 @@ export function validateEnvironment(
       'PASSWORD_RESET_TTL_SECONDS',
       86_400,
     ),
+    MINING_DURATION_SECONDS: parsePositiveInteger(
+      input.MINING_DURATION_SECONDS,
+      DEFAULTS.MINING_DURATION_SECONDS,
+      'MINING_DURATION_SECONDS',
+      604_800,
+    ),
+    MINING_REWARD_BIC: parsePositiveBigInt(
+      input.MINING_REWARD_BIC,
+      DEFAULTS.MINING_REWARD_BIC,
+      'MINING_REWARD_BIC',
+    ),
     CSRF_HMAC_SECRET: csrfSecret,
     RATE_LIMIT_HMAC_SECRET: rateSecret,
     AUTH_ACCESS_COOKIE_NAME: accessCookieName,
@@ -237,6 +253,19 @@ function parsePositiveInteger(
   const parsed = Number(candidate);
   if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
     throw new Error(`${name} must be a positive integer no greater than ${maximum}.`);
+  }
+  return parsed;
+}
+
+function parsePositiveBigInt(value: unknown, fallback: string, name: string): bigint {
+  const candidate = value === undefined || value === '' ? fallback : value;
+  if (typeof candidate !== 'string' || !/^\d+$/.test(candidate)) {
+    throw new Error(`${name} must be a positive whole number.`);
+  }
+
+  const parsed = BigInt(candidate);
+  if (parsed < 1n || parsed > POSTGRES_BIGINT_MAX) {
+    throw new Error(`${name} must fit in a positive PostgreSQL BIGINT.`);
   }
   return parsed;
 }
